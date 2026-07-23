@@ -99,7 +99,7 @@
 
 /* Gradient text */
 .gradient-text {
-  background: linear-gradient(135deg, #007bff 0%, #38bdf8 50%, #0a1b2d 100%);
+  background: linear-gradient(135deg, #164475 0%, #38bdf8 50%, #0a1b2d 100%);
   background-size: 200% 200%;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -156,7 +156,7 @@
   height: 2px;
   bottom: -4px;
   left: 0;
-  background-color: #007bff;
+  background-color: #164475;
   transition: width var(--duration-fast) var(--ease-out);
 }
 .nav-link-underline:hover::after {
