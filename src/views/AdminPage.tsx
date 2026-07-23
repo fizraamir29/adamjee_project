@@ -11,7 +11,7 @@ import {
   AlertTriangle, CheckSquare, MinusSquare, Bell, Percent, Volume2, Globe, Mail, Sparkles, Menu
 } from 'lucide-react';
 import { Product } from '../types';
-import { saveProducts } from '../utils/storage';
+import { saveProducts, saveProduct, deleteProductFromStorage, getProductImage, getCategoryFallbackImage } from '../utils/storage';
 
 /* ─── HELPERS ────────────────────────────────── */
 const statusColors: Record<string, string> = {
@@ -213,6 +213,16 @@ function ProductFormModal({ product, onClose, onSave }: ProductFormProps) {
                       });
                     }} />
                 </label>
+                <div className="mt-3">
+                  <label className="block text-[11px] font-bold text-[#1a1a1a] mb-1">Image URL (Optional)</label>
+                  <input
+                    type="text"
+                    value={form.image}
+                    onChange={e => setForm({ ...form, image: e.target.value })}
+                    placeholder="https://images.unsplash.com/... or paste image link"
+                    className="w-full px-3 py-1.5 border border-[#cbd5e1] rounded text-xs bg-white focus:outline-none focus:border-[#164475]"
+                  />
+                </div>
                 {(form.image || form.additionalImages.length > 0) && (
                   <div className="flex flex-wrap gap-3 mt-4">
                     {[...(form.image ? [form.image] : []), ...form.additionalImages].map((img, idx) => (
@@ -1027,29 +1037,55 @@ export default function AdminPage() {
 
   /* ─── CRUD HANDLERS ────────────────────────── */
   const handleDeleteProduct = async (id: string) => {
-    if (window.confirm('Delete this product?')) {
+    if (window.confirm('Delete this product permanently?')) {
       const token = localStorage.getItem('token');
       await fetch(`/api/products/${id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } });
+      deleteProductFromStorage(id);
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new Event('adamjee_new_product'));
+        try {
+          const bc = new BroadcastChannel('adamjee_products_channel');
+          bc.postMessage('new_product');
+          bc.close();
+        } catch (e) {}
+      }
       loadData(token!);
     }
   };
 
   const handleSaveProduct = async (form: any) => {
     const token = localStorage.getItem('token');
-    if (editingProduct?._id) {
-      await fetch(`/api/products/${editingProduct._id}`, {
+    let res;
+    const targetId = editingProduct?._id || editingProduct?.id;
+    if (targetId) {
+      res = await fetch(`/api/products/${targetId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify(form)
       });
     } else {
-      await fetch('/api/products', {
+      res = await fetch('/api/products', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify(form)
       });
     }
+
+    const data = await res.json();
+    if (data.success && data.product) {
+      saveProduct(data.product);
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new Event('adamjee_new_product'));
+        try {
+          const bc = new BroadcastChannel('adamjee_products_channel');
+          bc.postMessage('new_product');
+          bc.close();
+        } catch (e) {}
+      }
+    }
+
     setEditingProduct(null);
+    setShowProductForm(false);
     loadData(token!);
   };
 

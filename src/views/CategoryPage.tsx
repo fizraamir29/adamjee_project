@@ -43,18 +43,37 @@ export default function CategoryPage({ handleAddToCart, formatPrice }: CategoryP
   const [loading, setLoading] = useState(cachedProducts.length === 0);
 
   useEffect(() => {
-    fetch('/api/products?limit=100')
-      .then(res => res.json())
-      .then(data => {
-        if (data.success && data.products && data.products.length > 0) {
-          setProductsList(data.products);
-          if (typeof window !== 'undefined') {
-            localStorage.setItem('adamjee_products', JSON.stringify(data.products));
+    const fetchProds = () => {
+      fetch('/api/products?limit=100')
+        .then(res => res.json())
+        .then(data => {
+          if (data.success && data.products && data.products.length > 0) {
+            setProductsList(data.products);
+            if (typeof window !== 'undefined') {
+              localStorage.setItem('adamjee_products', JSON.stringify(data.products));
+            }
           }
-        }
-      })
-      .catch(console.error)
-      .finally(() => setLoading(false));
+        })
+        .catch(console.error)
+        .finally(() => setLoading(false));
+    };
+
+    fetchProds();
+
+    window.addEventListener('adamjee_new_product', fetchProds);
+    window.addEventListener('storage', fetchProds);
+
+    let bc: BroadcastChannel | null = null;
+    try {
+      bc = new BroadcastChannel('adamjee_products_channel');
+      bc.onmessage = () => fetchProds();
+    } catch (e) {}
+
+    return () => {
+      window.removeEventListener('adamjee_new_product', fetchProds);
+      window.removeEventListener('storage', fetchProds);
+      if (bc) bc.close();
+    };
   }, []);
 
   const TABS = getTabsData(productsList);

@@ -68,6 +68,26 @@ export const saveProducts = (products: Product[]) => {
   localStorage.setItem('adamjee_products', JSON.stringify(products));
 };
 
+export const saveProduct = (product: any) => {
+  if (typeof window === 'undefined' || !product) return;
+  const products = getProducts();
+  const idToMatch = product._id || product.id;
+  const idx = products.findIndex(p => (p as any)._id === idToMatch || (p as any).id === idToMatch);
+  if (idx !== -1) {
+    products[idx] = { ...products[idx], ...product };
+  } else {
+    products.unshift(product);
+  }
+  localStorage.setItem('adamjee_products', JSON.stringify(products));
+};
+
+export const deleteProductFromStorage = (id: string) => {
+  if (typeof window === 'undefined' || !id) return;
+  const products = getProducts();
+  const filtered = products.filter(p => (p as any)._id !== id && (p as any).id !== id);
+  localStorage.setItem('adamjee_products', JSON.stringify(filtered));
+};
+
 export interface Order {
   id: string;
   customerName: string;
