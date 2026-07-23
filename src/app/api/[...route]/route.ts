@@ -222,17 +222,33 @@ export async function GET(req: Request, { params }: { params: Promise<{ route: s
       };
       const sortBy = sortOptions[sort || ''] || sortOptions['default'];
 
-      const skip = (Number(page) - 1) * Number(limit);
-      const [products, total] = await Promise.all([
-        Product.find(query).sort(sortBy).skip(skip).limit(Number(limit)),
-        Product.countDocuments(query),
-      ]);
+      try {
+        const skip = (Number(page) - 1) * Number(limit);
+        const [products, total] = await Promise.all([
+          Product.find(query).sort(sortBy).skip(skip).limit(Number(limit)),
+          Product.countDocuments(query),
+        ]);
 
-      return NextResponse.json({
-        success: true,
-        products,
-        pagination: { total, page: Number(page), pages: Math.ceil(total / Number(limit)), limit: Number(limit) },
-      });
+        return NextResponse.json({
+          success: true,
+          products,
+          pagination: { total, page: Number(page), pages: Math.ceil(total / Number(limit)), limit: Number(limit) },
+        });
+      } catch (dbErr) {
+        console.error('GET /api/products DB query error, using fallback memory:', dbErr);
+        let filtered = [...mockProductsMemory];
+        if (category && category !== 'all') {
+          filtered = filtered.filter(p => p.category?.toLowerCase() === category.toLowerCase());
+        }
+        if (keyword) {
+          filtered = filtered.filter(p => p.name.toLowerCase().includes(keyword.toLowerCase()));
+        }
+        return NextResponse.json({
+          success: true,
+          products: filtered,
+          pagination: { total: filtered.length, page: 1, pages: 1, limit: 12 }
+        });
+      }
     }
 
     // 3. Single Product Endpoint: /api/products/:identifier
@@ -284,12 +300,21 @@ export async function GET(req: Request, { params }: { params: Promise<{ route: s
         return NextResponse.json({ success: true, orders: filtered, total: filtered.length });
       }
 
-      const query = status ? { orderStatus: status } : {};
-      const [orders, total] = await Promise.all([
-        Order.find(query).sort({ createdAt: -1 }).skip((Number(page) - 1) * Number(limit)).limit(Number(limit)).populate('user', 'name email'),
-        Order.countDocuments(query),
-      ]);
-      return NextResponse.json({ success: true, orders, total });
+      try {
+        const query = status ? { orderStatus: status } : {};
+        const [orders, total] = await Promise.all([
+          Order.find(query).sort({ createdAt: -1 }).skip((Number(page) - 1) * Number(limit)).limit(Number(limit)).populate('user', 'name email'),
+          Order.countDocuments(query),
+        ]);
+        return NextResponse.json({ success: true, orders, total });
+      } catch (dbErr) {
+        console.error('GET /api/orders DB query error, using fallback memory:', dbErr);
+        let filtered = [...mockOrdersMemory];
+        if (status) {
+          filtered = filtered.filter(o => o.orderStatus === status.toLowerCase());
+        }
+        return NextResponse.json({ success: true, orders: filtered, total: filtered.length });
+      }
     }
 
     // 6. Single Order Endpoint: GET /api/orders/:orderId
