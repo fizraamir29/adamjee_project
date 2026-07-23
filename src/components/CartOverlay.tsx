@@ -4,6 +4,7 @@ import React from "react";
 import { ShoppingCart, X, Trash2, ArrowRight } from "lucide-react";
 import Link from "next/link";
 import { Product } from "../types";
+import { getProductImage, getCategoryFallbackImage } from "../utils/storage";
 
 interface CartOverlayProps {
   isOpen: boolean;
@@ -52,48 +53,60 @@ export default function CartOverlay({ isOpen, onClose, cart, setCart, formatPric
               </Link>
             </div>
           ) : (
-            cart.map((item, i) => (
-              <div key={item.product.id} className="group flex gap-4 bg-white p-4 rounded-3xl border border-[#e2e8f0] shadow-sm hover:shadow-md transition-all animate-fade-in-up" style={{ animationDelay: `${i * 50}ms` }}>
-                <div className="w-24 h-24 rounded-2xl bg-[#f8fafc] border border-[#f1f5f9] p-2 flex-shrink-0 flex items-center justify-center overflow-hidden">
-                  <img src={item.product.image} alt={item.product.name} className="w-full h-full object-contain group-hover:scale-110 transition-transform duration-300" />
-                </div>
-                
-                <div className="flex-1 py-1 flex flex-col justify-between">
-                  <div>
-                    <div className="flex justify-between items-start gap-2 mb-1">
-                      <h4 className="text-sm font-bold text-[#0a1b2d] line-clamp-2 leading-snug">{item.product.name}</h4>
-                      <button 
-                        onClick={() => setCart(prev => prev.filter(i => i.product.id !== item.product.id))}
-                        className="text-[#cbd5e1] hover:text-[#0a1b2d] transition-colors p-1"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+            <>
+              {cart.map((item, i) => {
+                const itemId = item.product.id || (item.product as any)._id || `cart-${i}`;
+                return (
+                  <div key={itemId} className="group flex gap-4 bg-white p-4 rounded-3xl border border-[#e2e8f0] shadow-sm hover:shadow-md transition-all animate-fade-in-up" style={{ animationDelay: `${i * 50}ms` }}>
+                    <div className="w-24 h-24 rounded-2xl bg-[#f8fafc] border border-[#f1f5f9] p-2 flex-shrink-0 flex items-center justify-center overflow-hidden">
+                      <img
+                        src={getProductImage(item.product)}
+                        alt={item.product.name}
+                        className="w-full h-full object-contain group-hover:scale-110 transition-transform duration-300"
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).src = getCategoryFallbackImage(item.product.category, item.product.name);
+                        }}
+                      />
                     </div>
-                    <p className="text-xs font-bold text-[#64748b] uppercase tracking-widest">{item.product.code}</p>
-                  </div>
-                  
-                  <div className="flex items-center justify-between mt-2">
-                    <p className="text-lg font-black text-[#164475]">{formatPrice(item.product.price)}</p>
                     
-                    <div className="flex items-center bg-[#f8fafc] rounded-full border border-[#e2e8f0]">
-                      <button 
-                        onClick={() => setCart(p => p.map(i => i.product.id === item.product.id && i.qty > 1 ? { ...i, qty: i.qty - 1 } : i))}
-                        className="w-8 h-8 flex items-center justify-center text-[#64748b] hover:text-[#164475] font-bold text-lg hover:bg-white rounded-full transition-colors"
-                      >
-                        -
-                      </button>
-                      <span className="w-6 text-center text-sm font-bold text-[#0a1b2d]">{item.qty}</span>
-                      <button 
-                        onClick={() => setCart(p => p.map(i => i.product.id === item.product.id ? { ...i, qty: i.qty + 1 } : i))}
-                        className="w-8 h-8 flex items-center justify-center text-[#64748b] hover:text-[#164475] font-bold text-lg hover:bg-white rounded-full transition-colors"
-                      >
-                        +
-                      </button>
+                    <div className="flex-1 py-1 flex flex-col justify-between">
+                      <div>
+                        <div className="flex justify-between items-start gap-2 mb-1">
+                          <h4 className="text-sm font-bold text-[#0a1b2d] line-clamp-2 leading-snug">{item.product.name}</h4>
+                          <button 
+                            onClick={() => setCart(prev => prev.filter(c => (c.product.id || (c.product as any)._id) !== itemId))}
+                            className="text-[#cbd5e1] hover:text-[#0a1b2d] transition-colors p-1"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                        <p className="text-xs font-bold text-[#64748b] uppercase tracking-widest">{item.product.code || 'CODE-ADAMJEE'}</p>
+                      </div>
+                      
+                      <div className="flex items-center justify-between mt-2">
+                        <p className="text-lg font-black text-[#164475]">{formatPrice(item.product.price)}</p>
+                        
+                        <div className="flex items-center bg-[#f8fafc] rounded-full border border-[#e2e8f0]">
+                          <button 
+                            onClick={() => setCart(p => p.map(c => ((c.product.id || (c.product as any)._id) === itemId && c.qty > 1) ? { ...c, qty: c.qty - 1 } : c))}
+                            className="w-8 h-8 flex items-center justify-center text-[#64748b] hover:text-[#164475] font-bold text-lg hover:bg-white rounded-full transition-colors"
+                          >
+                            -
+                          </button>
+                          <span className="w-6 text-center text-sm font-bold text-[#0a1b2d]">{item.qty}</span>
+                          <button 
+                            onClick={() => setCart(p => p.map(c => (c.product.id || (c.product as any)._id) === itemId ? { ...c, qty: c.qty + 1 } : c))}
+                            className="w-8 h-8 flex items-center justify-center text-[#64748b] hover:text-[#164475] font-bold text-lg hover:bg-white rounded-full transition-colors"
+                          >
+                            +
+                          </button>
+                        </div>
+                      </div>
                     </div>
                   </div>
-                </div>
-              </div>
-            ))
+                );
+              })}
+            </>
           )}
         </div>
 

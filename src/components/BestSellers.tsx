@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { Star } from "lucide-react";
 import { Product } from "../types";
+import { BUNDLE_PRODUCTS } from "../data";
 
 interface BestSellersProps {
   bundle: Product[];
@@ -24,14 +25,14 @@ export default function BestSellers({
     return bundle.length >= 3 ? subtotal * 0.7 : subtotal;
   };
 
-  const [bundleProducts, setBundleProducts] = useState<Product[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [bundleProducts, setBundleProducts] = useState<Product[]>(BUNDLE_PRODUCTS);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    fetch('/api/products?featured=true&limit=4')
+    fetch('/api/products?tag=Bundle&limit=4')
       .then(res => res.json())
       .then(data => {
-        if(data.success && data.products) {
+        if (data.success && data.products && data.products.length >= 4) {
           setBundleProducts(data.products.slice(0, 4));
         }
       })
@@ -85,6 +86,9 @@ export default function BestSellers({
                       src={prod.image} 
                       className="max-h-[75%] max-w-[75%] object-contain select-none pointer-events-none" 
                       alt={prod.name} 
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).src = '/images/gaming_mouse_rgb_new.png';
+                      }}
                       referrerPolicy="no-referrer"
                     />
                     {prod.tag === "Hot" ? (

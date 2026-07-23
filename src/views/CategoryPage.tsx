@@ -4,6 +4,7 @@ import { useParams } from 'next/navigation';
 import React, { useState, useEffect, useRef } from "react";
 
 import { Product } from "../types";
+import { getProducts, getCategoryFallbackImage, getProductImage } from "../utils/storage";
 import { Filter, X, Star, ChevronDown, ChevronRight, ArrowRight } from "lucide-react";
 
 interface CategoryPageProps {
@@ -36,15 +37,20 @@ export default function CategoryPage({ handleAddToCart, formatPrice }: CategoryP
   // Products data filtered and sorted dynamically
   const soldOutIds = ["hp3", "ac6"];
 
-  const [productsList, setProductsList] = useState<Product[]>([]);
-  const [loading, setLoading] = useState(true);
+  // Pre-seed from localStorage cache so the grid renders instantly
+  const cachedProducts = typeof window !== 'undefined' ? getProducts() : [];
+  const [productsList, setProductsList] = useState<Product[]>(cachedProducts);
+  const [loading, setLoading] = useState(cachedProducts.length === 0);
 
   useEffect(() => {
     fetch('/api/products?limit=100')
       .then(res => res.json())
       .then(data => {
-        if (data.success && data.products) {
+        if (data.success && data.products && data.products.length > 0) {
           setProductsList(data.products);
+          if (typeof window !== 'undefined') {
+            localStorage.setItem('adamjee_products', JSON.stringify(data.products));
+          }
         }
       })
       .catch(console.error)
@@ -124,7 +130,7 @@ export default function CategoryPage({ handleAddToCart, formatPrice }: CategoryP
     const cards = document.querySelectorAll(".shop-card-reveal");
     cards.forEach((card) => observer.observe(card));
     return () => cards.forEach((card) => observer.unobserve(card));
-  }, [activeTab]);
+  }, [activeTab, productsList]);
 
   return (
     <div className="min-h-screen bg-[#fafbfc] relative">
@@ -280,17 +286,17 @@ export default function CategoryPage({ handleAddToCart, formatPrice }: CategoryP
 
             return (
               <div
-                key={product.id}
+                key={product.id || (product as any)._id || idx}
                 className="shop-card-reveal opacity-0 translate-y-[30px]"
                 style={{
                   transition: `opacity 500ms cubic-bezier(0.22,1,0.36,1), transform 500ms cubic-bezier(0.22,1,0.36,1)`,
                   transitionDelay: `${idx * 80}ms`,
                 }}
               >
-                <div className="bg-white rounded-[20px] border border-gray-100 overflow-hidden group hover:shadow-[0_20px_50px_rgba(0,0,0,0.08)] hover:-translate-y-2 transition-all duration-300 cursor-pointer relative">
+                <div className="bg-white rounded-[20px] border border-gray-100 hover:border-[#164475] overflow-hidden group hover:shadow-[0_16px_40px_rgba(22,68,117,0.1)] hover:-translate-y-1.5 transition-all duration-300 ease-out cursor-pointer relative">
                   {/* Image Area */}
                   <Link
-                    href={`/product/${product.id}`}
+                    href={`/product/${product.id || (product as any)._id || (product as any).slug}`}
                     className="relative block bg-[#f8f9fa] p-6 aspect-square flex items-center justify-center overflow-hidden"
                   >
                     {/* Tag badge */}
@@ -300,21 +306,34 @@ export default function CategoryPage({ handleAddToCart, formatPrice }: CategoryP
                       </span>
                     )}
 
-                    {/* Rating pill */}
-                    <span className="absolute top-4 right-4 bg-white px-2.5 py-1 rounded-full text-[11px] font-semibold text-[#0a1b2d] flex items-center gap-1 shadow-sm z-10">
-                      <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
-                      {product.rating.toFixed(1)}
-                    </span>
+                    {/* Rating pill ↔ Eye icon — smooth crossfade on hover */}
+                    <div className="absolute top-4 right-4 z-10">
+                      {/* Rating pill — fades out on hover */}
+                      <span className="absolute right-0 top-0 bg-white px-2.5 py-1 rounded-full text-[11px] font-semibold text-[#0a1b2d] flex items-center gap-1 shadow-sm whitespace-nowrap transition-all duration-300 opacity-100 group-hover:opacity-0 group-hover:pointer-events-none">
+                        <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
+                        {(product.rating || 5.0).toFixed(1)}
+                      </span>
+                      {/* Eye icon — fades in on hover */}
+                      <span className="absolute right-0 top-0 w-8 h-8 bg-white rounded-full flex items-center justify-center shadow-sm transition-all duration-300 opacity-0 group-hover:opacity-100 scale-75 group-hover:scale-100">
+                        <svg className="w-4 h-4 text-[#0a1b2d]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                          <circle cx="12" cy="12" r="3"/>
+                        </svg>
+                      </span>
+                    </div>
 
                     {/* Product Image */}
                     <img
-                      src={product.image}
+                      src={getProductImage(product)}
                       alt={product.name}
-                      className="w-4/5 h-4/5 object-contain transition-transform duration-400 ease-out group-hover:scale-[1.08]"
+                      className="w-4/5 h-4/5 object-contain transition-transform duration-500 ease-out group-hover:scale-[1.07]"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).src = getCategoryFallbackImage(product.category, product.name);
+                      }}
                       style={{ mixBlendMode: "multiply" }}
                     />
 
-                    {/* 5. Sold Out Overlay */}
+                    {/* Sold Out Overlay */}
                     {isSoldOut && (
                       <div className="absolute inset-0 flex items-center justify-center z-20">
                         <div className="bg-white/70 backdrop-blur-md px-6 py-3 rounded-full border border-white/50 shadow-lg">
@@ -326,9 +345,9 @@ export default function CategoryPage({ handleAddToCart, formatPrice }: CategoryP
 
                   {/* Info Area */}
                   <div className="p-5 space-y-2">
-                    <span className="text-[10px] font-bold tracking-widest text-gray-400 uppercase block">{product.code}</span>
-                    <Link href={`/product/${product.id}`}>
-                      <h3 className="text-[15px] font-bold text-[#0a1b2d] leading-tight group-hover:text-[#164475] transition-colors line-clamp-2">
+                    <span className="text-[10px] font-bold tracking-widest text-gray-400 uppercase block">{product.code || 'CODE-ADAMJEE'}</span>
+                    <Link href={`/product/${product.id || (product as any)._id || (product as any).slug}`}>
+                      <h3 className="text-[15px] font-bold text-[#0a1b2d] leading-tight group-hover:text-[#164475] transition-colors duration-300 line-clamp-2">
                         {product.name}
                       </h3>
                     </Link>
@@ -337,7 +356,7 @@ export default function CategoryPage({ handleAddToCart, formatPrice }: CategoryP
                       {!isSoldOut && (
                         <button
                           onClick={(e) => { e.stopPropagation(); handleAddToCart(product); }}
-                          className="w-9 h-9 rounded-full bg-[#0a1b2d] hover:bg-[#164475] text-white flex items-center justify-center transition-colors shadow-md hover:shadow-lg active:scale-95"
+                          className="w-9 h-9 rounded-full bg-[#0a1b2d] hover:bg-[#164475] text-white flex items-center justify-center transition-colors duration-300 shadow-md hover:shadow-lg active:scale-95"
                         >
                           <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round">
                             <path d="M12 5v14M5 12h14" />
@@ -346,14 +365,14 @@ export default function CategoryPage({ handleAddToCart, formatPrice }: CategoryP
                       )}
                     </div>
 
-                    {/* Color swatches */}
+                    {/* Color swatches / thumbnails */}
                     {product.additionalImages && product.additionalImages.length > 0 && (
                       <div className="flex gap-1.5 pt-2">
                         {product.additionalImages.slice(0, 3).map((img, i) => (
                           <div
                             key={i}
-                            className={`w-7 h-7 rounded-md border overflow-hidden flex items-center justify-center bg-white ${
-                              i === 0 ? "border-[#0a1b2d]" : "border-gray-200"
+                            className={`w-7 h-7 rounded-md border overflow-hidden flex items-center justify-center bg-white transition-colors ${
+                              i === 0 ? "border-[#0a1b2d]" : "border-gray-200 hover:border-[#164475]"
                             }`}
                           >
                             <img src={img} alt="variant" className="w-5 h-5 object-contain" style={{ mixBlendMode: "multiply" }} />

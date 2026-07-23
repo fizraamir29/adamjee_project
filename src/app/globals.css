@@ -1,7 +1,8 @@
 @import "tailwindcss";
 
+
 @theme {
-  --font-sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
 }
 
@@ -110,8 +111,12 @@
    PREMIUM CONCEPT THEME ANIMATIONS (Shopify Inspiration)
    ========================================================================== */
 
-/* Easing Variables */
+/* Easing Variables & Figma Color Tokens */
 :root {
+  --primary-navy: #164475;
+  --accent-sky: #6CC1F9;
+  --hero-navy-dark: #103256;
+  --hero-navy-light: #164475;
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
   --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
   --duration-fast: 300ms;
@@ -119,12 +124,24 @@
 }
 
 /* 1. Header Scroll States */
+@keyframes headerSlideDown {
+  from {
+    transform: translateY(-100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* .header-scrolled: visual-only overrides — position handled by sticky in JSX */
 .header-scrolled {
-  background: rgba(255, 255, 255, 0.9) !important;
-  backdrop-filter: blur(12px) !important;
-  -webkit-backdrop-filter: blur(12px) !important;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08) !important;
-  transition: all var(--duration-normal) var(--ease-out);
+  background: rgba(255, 255, 255, 0.95) !important;
+  backdrop-filter: blur(16px) !important;
+  -webkit-backdrop-filter: blur(16px) !important;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.06) !important;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06) !important;
 }
 
 /* Nav Link Underline Hover */
@@ -175,12 +192,18 @@
   animation: pulseGlow 2s infinite;
 }
 
-/* 4. Product Image Zoom Hover */
+/* 4. Product Image Zoom Hover — smooth easing on ALL product/card images */
 .product-img-zoom {
-  transition: transform var(--duration-normal) var(--ease-out);
+  transition: transform 500ms cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: transform;
 }
 .card-hover:hover .product-img-zoom {
-  transform: scale(1.08);
+  transform: scale(1.06);
+}
+
+/* Universal smooth zoom for any img inside a group card on hover */
+.group img {
+  transition: transform 500ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 /* 7. Marquee */
@@ -245,11 +268,14 @@
 
 /* Existing overrides to match premium speed */
 .card-hover {
-  transition: all var(--duration-fast) var(--ease-out);
+  transition: transform 350ms cubic-bezier(0.22, 1, 0.36, 1),
+              box-shadow 350ms cubic-bezier(0.22, 1, 0.36, 1),
+              border-color 250ms ease;
+  will-change: transform;
 }
 .card-hover:hover {
-  transform: translateY(-8px) scale(1.02);
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.08), 0 10px 15px rgba(0, 123, 255, 0.05);
+  transform: translateY(-6px);
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.07), 0 4px 12px rgba(22, 68, 117, 0.08);
 }
 .shimmer {
   background: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%);

@@ -33,8 +33,10 @@ export default function Header({ cartCount, onCartToggle, onBuildPcOpen }: Heade
     <>
       <header
         id="main-navigation"
-        className={`sticky top-0 z-50 bg-white px-4 md:px-12 py-4 flex justify-between items-center text-gray-800 transition-all duration-500 ease-out ${
-          scrolled ? 'header-scrolled rounded-none shadow-md' : 'rounded-t-[32px] md:rounded-t-[40px] mt-2 shadow-sm'
+        className={`sticky top-0 z-50 w-full px-4 md:px-12 py-4 flex justify-between items-center text-gray-800 transition-all duration-300 ${
+          scrolled 
+            ? 'bg-white/95 backdrop-blur-xl border-b border-gray-200/70 shadow-[0_4px_24px_rgba(0,0,0,0.06)]'
+            : 'bg-white border-b border-gray-100'
         }`}
       >
         {/* Logo */}
@@ -53,14 +55,38 @@ export default function Header({ cartCount, onCartToggle, onBuildPcOpen }: Heade
 
         {/* Desktop Nav */}
         <nav className="hidden lg:flex items-center gap-8 text-[13px] font-medium tracking-wide text-gray-600">
-          <Link href="/category/all" className="text-[#164475] font-bold inline-flex items-center gap-1.5 nav-link-underline">
-            <span className="w-1.5 h-1.5 rounded-full bg-[#164475] inline-block shrink-0" style={{ marginTop: '1px' }}></span>
-            <span>Shop</span>
-          </Link>
-          <Link href="/category/best-sellers" className="nav-link-underline hover:text-[#164475] transition-colors">Best Sellers</Link>
-          <Link href="/build-your-pc" className="nav-link-underline hover:text-[#164475] transition-colors cursor-pointer bg-transparent border-none text-gray-600 font-medium">Build Your Custom PC</Link>
-          <Link href="/benchmarks" className="nav-link-underline hover:text-[#164475] transition-colors">Benchmarks</Link>
-          <Link href="/about" className="nav-link-underline hover:text-[#164475] transition-colors">Why Us</Link>
+          {[
+            { href: '/category/all', label: 'Shop' },
+            { href: '/category/best-sellers', label: 'Best Sellers' },
+            { href: '/build-your-pc', label: 'Build Your Custom PC' },
+            { href: '/benchmarks', label: 'Benchmarks' },
+            { href: '/about', label: 'Why Us' }
+          ].map((link) => {
+            const active = link.href === '/category/all' 
+              ? (pathname === '/category/all' || (pathname.startsWith('/category/') && pathname !== '/category/best-sellers') || pathname.startsWith('/product/'))
+              : (pathname === link.href || pathname.startsWith(link.href));
+
+            return (
+              <Link 
+                key={link.href}
+                href={link.href}
+                className={`group relative inline-flex items-center gap-1.5 transition-all duration-300 font-semibold text-sm ${
+                  active ? 'text-[#164475] font-bold' : 'text-gray-600 hover:text-[#164475]'
+                }`}
+              >
+                {/* Dot indicator next to link (Figma hover dot animation) */}
+                <span 
+                  className={`w-1.5 h-1.5 rounded-full bg-[#164475] transition-all duration-300 shrink-0 ${
+                    active 
+                      ? 'opacity-100 scale-100 w-1.5' 
+                      : 'opacity-0 scale-0 w-0 group-hover:opacity-100 group-hover:scale-100 group-hover:w-1.5'
+                  }`}
+                  style={{ marginTop: '1px' }}
+                />
+                <span>{link.label}</span>
+              </Link>
+            );
+          })}
         </nav>
 
         {/* Right Icons */}

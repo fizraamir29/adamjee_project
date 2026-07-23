@@ -9,7 +9,7 @@ interface HeroSectionProps {
 export default function HeroSection({ onBuildPcOpen }: HeroSectionProps) {
   return (
     <section className="px-4 md:px-12 py-0 pb-6 relative z-10 font-sans">
-      <div className="relative rounded-b-[32px] md:rounded-b-[40px] overflow-hidden flex flex-col justify-center min-h-[580px] text-white bg-[#164475] shadow-2xl">
+      <div className="relative rounded-b-[32px] md:rounded-b-[40px] overflow-hidden flex flex-col justify-center min-h-[580px] text-white shadow-2xl" style={{ background: 'linear-gradient(90deg, rgb(16,50,86) 0%, rgb(22,68,117) 100%)' }}>
         
         {/* Left side glowing neon chevrons */}
         <div className="absolute top-0 left-0 w-full lg:w-1/2 h-full opacity-30 pointer-events-none flex items-center justify-start z-0 overflow-hidden">
@@ -35,7 +35,7 @@ export default function HeroSection({ onBuildPcOpen }: HeroSectionProps) {
           style={{ backgroundImage: 'url("/images/blue_rgb_pc_cases_1780241349905.png")', opacity: 0.9 }}
         >
           {/* Gradient fade to blend with the solid blue */}
-          <div className="absolute inset-0 bg-gradient-to-r from-[#164475] via-[#164475]/50 to-transparent"></div>
+          <div className="absolute inset-0 bg-gradient-to-r from-[#103256] via-[#103256]/50 to-transparent"></div>
         </div>
 
         {/* Right floating social bar */}
@@ -61,16 +61,16 @@ export default function HeroSection({ onBuildPcOpen }: HeroSectionProps) {
             <div className="lg:col-span-7 space-y-7 text-left">
               
               {/* Label */}
-              <div className="inline-flex items-center space-x-2 text-[11px] font-black tracking-widest text-[#7cb3d8] uppercase reveal-up delay-100">
-                <span className="w-2 h-2 rounded-full bg-[#7cb3d8] animate-pulse-glow" />
+              <div className="inline-flex items-center space-x-2 text-[11px] font-black tracking-widest text-[#6cc1f9] uppercase reveal-up delay-100">
+                <span className="w-2 h-2 rounded-full bg-[#6cc1f9] animate-pulse-glow" />
                 <span>BUILT FOR CREATORS & PC ENTHUSIASTS</span>
               </div>
 
               {/* Headline */}
               <h1 className="text-4xl md:text-5xl lg:text-[60px] font-medium leading-[1.1] tracking-tight text-white reveal-up delay-200">
                 Power Your Setup<br />
-                with the Latest Gaming<br />
-                <span className="text-[#7cb3d8] font-bold">& PC Hardware</span>
+                with the Latest <span className="text-white font-medium">Gaming</span><br />
+                <span className="text-[#6cc1f9] font-bold">& PC Hardware</span>
               </h1>
 
               {/* Subtext */}
@@ -102,9 +102,9 @@ export default function HeroSection({ onBuildPcOpen }: HeroSectionProps) {
 
         {/* Bottom carousel dots */}
         <div className="absolute bottom-8 left-8 md:left-20 flex space-x-2.5 z-20">
-          <span className="w-2 h-2 rounded-full border-2 border-[#7cb3d8] bg-transparent block cursor-pointer hover:bg-[#7cb3d8]/50" />
+          <span className="w-2 h-2 rounded-full border-2 border-[#6cc1f9] bg-transparent block cursor-pointer hover:bg-[#6cc1f9]/50" />
           <span className="w-2 h-2 rounded-full bg-white block cursor-pointer" />
-          <span className="w-2 h-2 rounded-full border-2 border-[#7cb3d8] bg-transparent block cursor-pointer hover:bg-[#7cb3d8]/50" />
+          <span className="w-2 h-2 rounded-full border-2 border-[#6cc1f9] bg-transparent block cursor-pointer hover:bg-[#6cc1f9]/50" />
         </div>
 
         {/* Bottom right explore categories */}

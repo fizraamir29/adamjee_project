@@ -19,7 +19,32 @@ export const NEW_ARRIVALS: Product[] = [
     additionalImages: [
       "/images/dell_led_monitor_1780238004077.png",
       "/images/rog_monitor_new.png"
-    ]
+    ],
+    specBullets: [
+      "Screen size: 29-inch UltraWide (2560×1080 resolution)",
+      "Panel type: IPS with professional color calibration (Delta-E < 2)",
+      "Aspect Ratio: 21:9 for expansive multitasking productivity",
+      "Stand: Fully adjustable (height, tilt, swivel, pivot)",
+      "Ports: 1× DisplayPort, 1× Mini-DP, 2× HDMI, 4× USB 3.0",
+      "Colors: sRGB 99% coverage for precise design workflows"
+    ],
+    feature1Title: "Premium UltraWide Productivity",
+    feature1Sub: "Expansive 21:9 UltraWide Display for Productivity",
+    feature1Desc: "The Dell UltraSharp U2917W is a 29-inch UltraWide IPS monitor designed to enhance productivity and streamline multitasking. With its 21:9 aspect ratio and 2560×1080 resolution, it offers significantly more horizontal screen space.",
+    feature1Desc2: "It features professional color calibration right out of the box (Delta-E <2) so all design work displays perfectly with ultra-wide viewing angles.",
+    feature1Img: "/images/dell_led_monitor_1780238004077.png",
+    feature2Title: "Ergonomic and Professional Design",
+    feature2Sub: "Built for Ultimate Comfort",
+    feature2Desc: "Adjust height, tilt, swivel and pivot to your exact comfort preference. The screen border is thin, making it perfect for multi-display setups.",
+    feature2Desc2: "An integrated cable management slot in the stand guides cables neatly to keep your desktop workspace clutter-free.",
+    feature2Img: "/images/rog_monitor_new.png",
+    accordionItems: [
+      { title: "Display Specifications", content: "29\" UltraWide LED, 2560x1080 resolution, 21:9 aspect ratio, 60Hz refresh rate, 5ms response time, IPS panel, sRGB 99% coverage." },
+      { title: "Connectivity & Ports", content: "1x DisplayPort 1.2, 1x Mini-DisplayPort, 1x DisplayPort-out (MST), 2x HDMI 1.4, 4x USB 3.0 downstream ports, 1x USB 3.0 upstream port." },
+      { title: "Dimensions & Ergonomics", content: "Adjustable height up to 130mm, tilt (-5° to 21°), swivel (-30° to 30°), pivot (90° clockwise). VESA mountable 100x100mm." }
+    ],
+    colors: ["Black", "Midnight Blue"],
+    colorLabel: "Frame Color"
   },
   {
     id: "na2",
@@ -35,7 +60,32 @@ export const NEW_ARRIVALS: Product[] = [
       "/images/mechanical_keyboard_1780238028029.png",
       "/images/mechanical_keyboard_1780238028029.png",
       "/images/mechanical_keyboard_1780238028029.png"
-    ]
+    ],
+    specBullets: [
+      "Switches: Cherry MX Mechanical Switches",
+      "Form Factor: Compact Tenkeyless Layout (87 keys)",
+      "Backlighting: Per-key fully customizable RGB",
+      "Build: Premium anodized aluminium top plate",
+      "Rollover: N-key rollover with 100% anti-ghosting",
+      "Connectivity: Detachable USB-C braided cable"
+    ],
+    feature1Title: "Cherry MX Mechanical Switches",
+    feature1Sub: "Ultra-Tactile and Responsive Performance",
+    feature1Desc: "The Aftershock Oden features gold-crosspoint contact Cherry MX switches, delivering the ultimate key response and tactical feedback. Rated for over 50 million keystrokes for reliable durability.",
+    feature1Desc2: "Detachable high-speed USB-C braided cable provides low-latency connectivity and makes the keyboard highly portable for travel.",
+    feature1Img: "/images/mechanical_keyboard_1780238028029.png",
+    feature2Title: "Premium Anodized Aluminium Plate",
+    feature2Sub: "Heavy-Duty Construction",
+    feature2Desc: "Crafted with an aerospace-grade anodized aluminium top plate, the keyboard offers a rigid, non-slip frame built to withstand intense gaming sessions.",
+    feature2Desc2: "Per-key dynamic RGB backlighting can be customized via software, offering 16.8 million colors and reactive animations.",
+    feature2Img: "/images/mechanical_keyboard_1780238028029.png",
+    accordionItems: [
+      { title: "Switch Specifications", content: "Cherry MX Mechanical Switches, 2.0mm actuation distance, 4.0mm total travel, 45g actuation force, tactile bump/click feedback." },
+      { title: "Keycaps & Layout", content: "Compact Tenkeyless (TKL) 87-key layout, double-shot injection PBT keycaps, standard bottom row, wear-resistant legends." },
+      { title: "Dimensions & Package", content: "Dimensions: 360 x 140 x 38mm. Package includes: Oden Keyboard, Braided USB-C Cable, Keycap Puller, User Manual." }
+    ],
+    colors: ["Eclipse Black", "Snow White"],
+    colorLabel: "Keycap Set"
   },
   {
     id: "na3",

@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation';
 import React, { useState } from "react";
 
 import { Product } from "../types";
-import { saveOrder } from "../utils/storage";
+import { saveOrder, getProductImage } from "../utils/storage";
 import { CreditCard, Truck, ShieldCheck, ChevronLeft, Building2, User, Phone, Mail, MapPin, Loader2, ExternalLink, Lock } from "lucide-react";
 
 interface CheckoutPageProps {
@@ -78,7 +78,18 @@ export default function CheckoutPage({ cart, setCart, formatPrice }: CheckoutPag
         }
 
         const createdOrder = orderData.order;
-        sessionStorage.setItem('lastOrder', JSON.stringify(createdOrder));
+        if (createdOrder) {
+          saveOrder(createdOrder);
+          sessionStorage.setItem('lastOrder', JSON.stringify(createdOrder));
+          if (typeof window !== 'undefined') {
+            window.dispatchEvent(new Event('adamjee_new_order'));
+            try {
+              const bc = new BroadcastChannel('adamjee_orders_channel');
+              bc.postMessage('new_order');
+              bc.close();
+            } catch (e) {}
+          }
+        }
 
         // Then initiate Safepay payment session
         const safepayRes = await fetch('/api/payment/create-session', {
@@ -125,8 +136,19 @@ export default function CheckoutPage({ cart, setCart, formatPrice }: CheckoutPag
       const data = await res.json();
 
       if (res.ok) {
+        if (data.order) {
+          saveOrder(data.order);
+          sessionStorage.setItem('lastOrder', JSON.stringify(data.order));
+          if (typeof window !== 'undefined') {
+            window.dispatchEvent(new Event('adamjee_new_order'));
+            try {
+              const bc = new BroadcastChannel('adamjee_orders_channel');
+              bc.postMessage('new_order');
+              bc.close();
+            } catch (e) {}
+          }
+        }
         setCart([]);
-        sessionStorage.setItem('lastOrder', JSON.stringify(data.order));
         router.push("/order-confirmation");
       } else {
         setError(data.message || 'Failed to place order.');
@@ -140,7 +162,7 @@ export default function CheckoutPage({ cart, setCart, formatPrice }: CheckoutPag
   };
 
   return (
-    <div className="min-h-screen bg-[#fafbfc] py-12">
+    <div className="min-h-screen bg-white py-12">
       <div className="max-w-7xl mx-auto px-4 md:px-12">
         
         <div className="mb-8">
@@ -295,40 +317,40 @@ export default function CheckoutPage({ cart, setCart, formatPrice }: CheckoutPag
 
           {/* Order Summary Area */}
           <div className="w-full lg:w-[400px] flex-shrink-0">
-            <div className="bg-[#03152a] rounded-3xl p-8 text-white sticky top-24 shadow-2xl">
-              <h3 className="text-xl font-bold mb-6">Your Order</h3>
+            <div className="bg-white rounded-3xl p-8 text-[#0a1b2d] sticky top-24 shadow-xl border border-gray-100">
+              <h3 className="text-xl font-bold mb-6 text-[#0a1b2d]">Your Order</h3>
               
               <div className="space-y-4 mb-6 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
                 {cart.map(item => (
-                  <div key={item.product.id} className="flex gap-4">
-                    <div className="w-16 h-16 bg-white/10 rounded-lg p-1.5 flex-shrink-0 relative">
-                      <img src={item.product.image} alt={item.product.name} className="w-full h-full object-contain" />
-                      <div className="absolute -top-2 -right-2 w-5 h-5 bg-[#164475] text-[#03152a] rounded-full flex items-center justify-center text-[10px] font-black">
+                  <div key={item.product.id || (item.product as any)._id} className="flex gap-4">
+                    <div className="w-16 h-16 bg-gray-50 rounded-lg p-1.5 flex-shrink-0 relative border border-gray-100">
+                      <img src={getProductImage(item.product)} alt={item.product.name} className="w-full h-full object-contain" />
+                      <div className="absolute -top-2 -right-2 w-5 h-5 bg-[#164475] text-white rounded-full flex items-center justify-center text-[10px] font-black">
                         {item.qty}
                       </div>
                     </div>
                     <div className="flex-1">
-                      <h4 className="text-sm font-bold leading-tight mb-1 text-white/90 line-clamp-2">{item.product.name}</h4>
+                      <h4 className="text-sm font-bold leading-tight mb-1 text-[#0a1b2d] line-clamp-2">{item.product.name}</h4>
                       <p className="text-xs text-[#164475] font-bold">{formatPrice(item.product.price)}</p>
                     </div>
                   </div>
                 ))}
               </div>
 
-              <div className="border-t border-white/20 pt-6 space-y-4 mb-6 text-sm font-medium text-white/80">
+              <div className="border-t border-gray-100 pt-6 space-y-4 mb-6 text-sm font-medium text-gray-500">
                 <div className="flex justify-between">
                   <span>Subtotal</span>
-                  <span className="text-white">{formatPrice(subtotal)}</span>
+                  <span className="text-[#0a1b2d] font-semibold">{formatPrice(subtotal)}</span>
                 </div>
                 <div className="flex justify-between">
                   <span>Shipping</span>
-                  <span className="text-white">{formatPrice(shipping)}</span>
+                  <span className="text-[#0a1b2d] font-semibold">{formatPrice(shipping)}</span>
                 </div>
               </div>
 
-              <div className="border-t border-white/20 pt-6 mb-8">
+              <div className="border-t border-gray-100 pt-6 mb-8">
                 <div className="flex justify-between items-end">
-                  <span className="font-bold text-lg">Total</span>
+                  <span className="font-bold text-lg text-[#0a1b2d]">Total</span>
                   <span className="text-3xl font-black text-[#164475]">{formatPrice(total)}</span>
                 </div>
               </div>
@@ -353,7 +375,7 @@ export default function CheckoutPage({ cart, setCart, formatPrice }: CheckoutPag
                 )}
               </button>
 
-              <div className="mt-6 flex items-center justify-center gap-2 text-white/60 text-xs font-medium">
+              <div className="mt-6 flex items-center justify-center gap-2 text-gray-400 text-xs font-medium">
                 <ShieldCheck className="w-4 h-4" /> 256-bit secure checkout
               </div>
             </div>

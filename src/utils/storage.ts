@@ -1,6 +1,42 @@
 import { Product } from '../types';
 import { ALL_PRODUCTS, NEW_ARRIVALS, BUNDLE_PRODUCTS } from '../data';
 
+export const getCategoryFallbackImage = (category?: string, name?: string): string => {
+  const cat = (category || '').toLowerCase();
+  const n = (name || '').toLowerCase();
+  if (cat.includes('headphone') || n.includes('headphone') || n.includes('headset') || n.includes('airpod')) {
+    return '/images/headphones_red_black_1780246535746.png';
+  }
+  if (cat.includes('earphone') || n.includes('earbud') || n.includes('earphone') || n.includes('bud')) {
+    return '/images/tws_blue_earbuds_1780227103510.png';
+  }
+  if (cat.includes('speaker') || n.includes('speaker') || n.includes('soundbar')) {
+    return '/images/image 117.png';
+  }
+  if (cat.includes('desktop') || n.includes('pc') || n.includes('build') || n.includes('rig')) {
+    return '/images/custom_blue_gaming_pc_cases_1780242165601.png';
+  }
+  if (n.includes('mouse') || n.includes('mice')) {
+    return '/images/gaming_mouse_rgb_new.png';
+  }
+  if (n.includes('keyboard')) {
+    return '/images/mechanical_keyboard_1780238028029.png';
+  }
+  if (n.includes('chair')) {
+    return '/images/gaming_chair_blue_1780246513295.png';
+  }
+  return '/images/dell_led_monitor_1780238004077.png';
+};
+
+export const getProductImage = (product: any): string => {
+  if (!product) return getCategoryFallbackImage();
+  const img = product.image || (Array.isArray(product.images) && product.images[0]);
+  if (img && typeof img === 'string' && img.trim().length > 0) {
+    return img;
+  }
+  return getCategoryFallbackImage(product.category, product.name);
+};
+
 // NEW_ARRIVALS come first so they appear in the New Arrivals section (they have 'New'/'Hot' tags)
 export const INITIAL_PRODUCTS = [
   ...NEW_ARRIVALS,
@@ -52,11 +88,15 @@ export const getOrders = (): Order[] => {
   return data ? JSON.parse(data) : [];
 };
 
-export const saveOrder = (order: Order) => {
-  if (typeof window === 'undefined') return;
+export const saveOrder = (order: any) => {
+  if (typeof window === 'undefined' || !order) return;
   const orders = getOrders();
-  orders.unshift(order); // Add to beginning
-  localStorage.setItem('adamjee_orders', JSON.stringify(orders));
+  const idToMatch = order._id || order.id || order.orderId;
+  const exists = orders.some(o => (o as any)._id === idToMatch || (o as any).id === idToMatch || (o as any).orderId === idToMatch);
+  if (!exists) {
+    orders.unshift(order);
+    localStorage.setItem('adamjee_orders', JSON.stringify(orders));
+  }
 };
 
 export const updateOrderStatus = (orderId: string, status: Order['status']) => {

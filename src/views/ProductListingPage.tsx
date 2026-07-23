@@ -5,7 +5,7 @@ import { useParams } from 'next/navigation';
 import React, { useState, useEffect } from "react";
 
 import { Product } from "../types";
-import { getProducts, toggleWishlist, isInWishlist, INITIAL_PRODUCTS } from "../utils/storage";
+import { getProducts, toggleWishlist, isInWishlist, INITIAL_PRODUCTS, getCategoryFallbackImage } from "../utils/storage";
 import { ALL_PRODUCTS } from "../data";
 import {
   Star, Heart, ChevronRight, ChevronLeft, Play,
@@ -537,7 +537,13 @@ export default function ProductListingPage({ handleAddToCart, formatPrice }: Pro
   }, []);
 
   const product = productsList.find(p => p.id === id || p._id === id || p.slug === id) || productsList[0];
-  const images = [product.image, ...(product.additionalImages || [])];
+  const rawImages = (product.images && product.images.length > 0)
+    ? product.images
+    : [product.image, ...(product.additionalImages || [])];
+  const images = rawImages.filter((img): img is string => typeof img === 'string' && img.trim().length > 0);
+  if (images.length === 0) {
+    images.push(getCategoryFallbackImage(product.category, product.name));
+  }
 
   /* Related: same category first, then others */
   const relatedProducts = INITIAL_PRODUCTS
@@ -576,7 +582,29 @@ export default function ProductListingPage({ handleAddToCart, formatPrice }: Pro
 
   /* Dynamic content */
   const type = detectType(product);
-  const content = getDynamicContent(product, type);
+  const fallbackContent = getDynamicContent(product, type);
+  const content = {
+    specBullets: product.specBullets && product.specBullets.length > 0 ? product.specBullets : fallbackContent.specBullets,
+    feature1Title: product.feature1Title || fallbackContent.feature1Title,
+    feature1Sub: product.feature1Sub || fallbackContent.feature1Sub,
+    feature1Desc: product.feature1Desc || fallbackContent.feature1Desc,
+    feature1Desc2: product.feature1Desc2 || fallbackContent.feature1Desc2,
+    feature1Img: product.feature1Img || fallbackContent.feature1Img,
+    feature2Title: product.feature2Title || fallbackContent.feature2Title,
+    feature2Sub: product.feature2Sub || fallbackContent.feature2Sub,
+    feature2Desc: product.feature2Desc || fallbackContent.feature2Desc,
+    feature2Desc2: product.feature2Desc2 || fallbackContent.feature2Desc2,
+    feature2Img: product.feature2Img || fallbackContent.feature2Img,
+    feature3Title: product.feature3Title || fallbackContent.feature3Title,
+    feature3Sub: product.feature3Sub || fallbackContent.feature3Sub,
+    feature3Desc: product.feature3Desc || fallbackContent.feature3Desc,
+    feature3Desc2: product.feature3Desc2 || fallbackContent.feature3Desc2,
+    feature3Img: product.feature3Img || fallbackContent.feature3Img,
+    accordionItems: product.accordionItems && product.accordionItems.length > 0 ? product.accordionItems : fallbackContent.accordionItems,
+    colors: product.colors && product.colors.length > 0 ? product.colors : fallbackContent.colors,
+    colorLabel: product.colorLabel || fallbackContent.colorLabel,
+    portsBannerImg: fallbackContent.portsBannerImg,
+  };
 
   useEffect(() => {
     setMainImage(0);
@@ -658,6 +686,9 @@ export default function ProductListingPage({ handleAddToCart, formatPrice }: Pro
                 src={images[mainImage] || product.image}
                 alt={product.name}
                 className="w-full h-full object-contain p-6 transition-transform duration-500 hover:scale-105"
+                onError={(e) => {
+                  (e.target as HTMLImageElement).src = getCategoryFallbackImage(product.category, product.name);
+                }}
                 style={{ filter: 'drop-shadow(0 8px 32px rgba(124,179,216,0.15))' }}
               />
               <button
@@ -884,7 +915,7 @@ export default function ProductListingPage({ handleAddToCart, formatPrice }: Pro
         <div className="grid grid-cols-1 md:grid-cols-2 gap-10 items-center pdp-up d1">
           <div className="rounded-2xl border border-white/10 flex items-center justify-center p-4 overflow-hidden" style={{ minHeight: 250, background: 'rgba(255,255,255,0.04)' }}>
             <img src={content.feature2Img} alt={content.feature2Title} className="w-full h-full object-cover rounded-xl"
-              onError={(e) => { (e.target as HTMLImageElement).src = product.image; }}
+              onError={(e) => { (e.target as HTMLImageElement).src = getCategoryFallbackImage(product.category, product.name); }}
               style={{ filter: 'drop-shadow(0 4px 16px rgba(0,0,0,0.4))' }} />
           </div>
           <div className="space-y-4">
@@ -908,7 +939,7 @@ export default function ProductListingPage({ handleAddToCart, formatPrice }: Pro
             </div>
             <div className="rounded-2xl border border-white/10 flex items-center justify-center p-4 md:order-2 order-1 overflow-hidden" style={{ minHeight: 250, background: 'rgba(255,255,255,0.04)' }}>
               <img src={content.feature3Img} alt={content.feature3Title} className="w-full h-full object-cover rounded-xl"
-                onError={(e) => { (e.target as HTMLImageElement).src = product.image; }}
+                onError={(e) => { (e.target as HTMLImageElement).src = getCategoryFallbackImage(product.category, product.name); }}
                 style={{ filter: 'drop-shadow(0 4px 16px rgba(0,0,0,0.4))' }} />
             </div>
           </div>
@@ -952,65 +983,105 @@ export default function ProductListingPage({ handleAddToCart, formatPrice }: Pro
           </h2>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-5 max-w-7xl mx-auto pdp-up d1">
-          <div className="bg-white rounded-[24px] border border-gray-100 shadow-sm overflow-hidden flex flex-col">
-            <div className="h-[200px] overflow-hidden"><img src="/images/testimonial_setup1.png" className="w-full h-full object-cover" alt="Setup" /></div>
-            <div className="p-6 flex flex-col flex-1 justify-between">
-              <p className="text-sm text-gray-600 leading-relaxed font-medium">&quot;Absolutely loved the custom PC build quality and cable management. The performance is smooth, and the team guided me perfectly throughout the process.&quot;</p>
-              <div className="flex items-center space-x-3 border-t border-gray-100 pt-4 mt-4">
-                <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=hamza&backgroundColor=b6e3f4" className="w-10 h-10 rounded-full border-2 border-gray-100" alt="Hamza" />
-                <div><h5 className="text-sm font-extrabold text-[#0a1b2d]">Hamza A.</h5><span className="text-[10px] text-[#103256] font-bold">Verified Buyer ✓</span></div>
+        {/* 3-col grid wrapped in relative container with bottom fade overlay */}
+        <div className="relative max-w-7xl mx-auto pdp-up d1">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-5 pb-20">
+
+            {/* Row 1, Col 1: Testimonial card with image top (shorter text layout) */}
+            <div className="bg-white rounded-[24px] border border-gray-100 shadow-sm overflow-hidden flex flex-col justify-between min-h-[220px]">
+              <div className="h-[180px] overflow-hidden">
+                <img src="/images/testimonial_setup1.png" className="w-full h-full object-cover" alt="Setup" />
+              </div>
+              <div className="p-5 flex flex-col flex-1 justify-between">
+                <p className="text-sm text-gray-600 leading-relaxed font-medium">
+                  &quot;Absolutely loved the custom PC build quality and cable management. The performance is smooth, and the team guided me perfectly.&quot;
+                </p>
+                <div className="flex items-center space-x-3 border-t border-gray-100 pt-4 mt-3">
+                  <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=hamza&backgroundColor=b6e3f4" className="w-10 h-10 rounded-full border-2 border-gray-100" alt="Hamza" />
+                  <div className="text-left">
+                    <h5 className="text-sm font-extrabold text-[#0a1b2d]">Hamza A.</h5>
+                    <span className="text-[10px] text-[#103256] font-bold">Verified Buyer ✓</span>
+                  </div>
+                </div>
               </div>
             </div>
-          </div>
 
-          <div className="relative rounded-[24px] overflow-hidden bg-[#0a1b2d] min-h-[420px] flex items-center justify-center group cursor-pointer shadow-sm">
-            <img src="/images/testimonial_setup2.png" className="absolute inset-0 w-full h-full object-cover opacity-75 group-hover:opacity-90 group-hover:scale-105 transition-all duration-700" alt="Showcase" />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent pointer-events-none" />
-            <div className="relative z-10 flex flex-col items-center space-y-3 text-white">
-              <button className="w-16 h-16 rounded-full bg-white text-[#0a1b2d] flex items-center justify-center shadow-2xl group-hover:scale-110 transition-transform duration-300 border-none cursor-pointer"><Play className="w-6 h-6 fill-[#0a1b2d] ml-0.5" /></button>
-              <span className="text-[10px] uppercase font-black tracking-[0.2em]">Adamjee Setup Showcase</span>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-[24px] border border-gray-100 shadow-sm overflow-hidden flex flex-col">
-            <div className="h-[200px] overflow-hidden"><img src="/images/testimonial_setup3.png" className="w-full h-full object-cover" alt="Setup" /></div>
-            <div className="p-6 flex flex-col flex-1 justify-between">
-              <p className="text-sm text-gray-600 leading-relaxed font-medium">&quot;Ordered my gaming setup from Adamjee Computers and the experience was amazing. Genuine products, fast delivery, and excellent customer support.&quot;</p>
-              <div className="flex items-center space-x-3 border-t border-gray-100 pt-4 mt-4">
-                <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=ali&backgroundColor=c0aede" className="w-10 h-10 rounded-full border-2 border-gray-100" alt="Ali" />
-                <div><h5 className="text-sm font-extrabold text-[#0a1b2d]">Ali R.</h5><span className="text-[10px] text-[#103256] font-bold">Verified Buyer ✓</span></div>
+            {/* Row 1, Col 2: Video card (long/tall video review) */}
+            <div className="relative rounded-[24px] overflow-hidden bg-[#0a1b2d] min-h-[500px] flex items-center justify-center group cursor-pointer shadow-sm">
+              <img src="/images/testimonial_setup2.png" className="absolute inset-0 w-full h-full object-cover opacity-75 group-hover:opacity-90 group-hover:scale-105 transition-all duration-700" alt="Showcase" />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent pointer-events-none" />
+              <div className="relative z-10 flex flex-col items-center space-y-3 text-white">
+                <button className="w-16 h-16 rounded-full bg-white text-[#0a1b2d] flex items-center justify-center shadow-2xl group-hover:scale-110 transition-transform duration-300 border-none cursor-pointer">
+                  <Play className="w-6 h-6 fill-[#0a1b2d] ml-0.5" />
+                </button>
+                <span className="text-[10px] uppercase font-black tracking-[0.2em]">Adamjee Setup Showcase</span>
               </div>
             </div>
-          </div>
 
-          <div className="relative rounded-[24px] overflow-hidden bg-[#0a1b2d] min-h-[300px] flex items-center justify-center group cursor-pointer shadow-sm">
-            <img src="/images/testimonial_setup4.png" className="absolute inset-0 w-full h-full object-cover opacity-70 group-hover:opacity-90 group-hover:scale-105 transition-all duration-700" alt="Studio" />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent pointer-events-none" />
-            <div className="relative z-10 flex flex-col items-center space-y-3 text-white">
-              <button className="w-14 h-14 rounded-full bg-white text-[#0a1b2d] flex items-center justify-center shadow-2xl group-hover:scale-110 transition duration-300 border-none cursor-pointer"><Play className="w-5 h-5 fill-[#0a1b2d] ml-0.5" /></button>
-              <span className="text-[10px] uppercase font-black tracking-[0.2em]">Futuristic Studio</span>
+            {/* Row 1, Col 3: Testimonial card with image top (shorter text layout) */}
+            <div className="bg-white rounded-[24px] border border-gray-100 shadow-sm overflow-hidden flex flex-col justify-between min-h-[220px]">
+              <div className="h-[180px] overflow-hidden">
+                <img src="/images/testimonial_setup3.png" className="w-full h-full object-cover" alt="Setup" />
+              </div>
+              <div className="p-5 flex flex-col flex-1 justify-between">
+                <p className="text-sm text-gray-600 leading-relaxed font-medium">
+                  &quot;Ordered my gaming setup from Adamjee Computers and the experience was amazing. Genuine products, fast delivery, and excellent support.&quot;
+                </p>
+                <div className="flex items-center space-x-3 border-t border-gray-100 pt-4 mt-3">
+                  <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=ali&backgroundColor=c0aede" className="w-10 h-10 rounded-full border-2 border-gray-100" alt="Ali" />
+                  <div className="text-left">
+                    <h5 className="text-sm font-extrabold text-[#0a1b2d]">Ali R.</h5>
+                    <span className="text-[10px] text-[#103256] font-bold">Verified Buyer ✓</span>
+                  </div>
+                </div>
+              </div>
             </div>
-          </div>
 
-          <div className="bg-white rounded-[24px] border border-gray-100 shadow-sm p-6 flex flex-col justify-between min-h-[300px]">
-            <div className="space-y-4">
-              <div className="flex space-x-1 text-amber-400">{[1,2,3,4,5].map(x => <Star key={x} className="w-4 h-4 fill-current" />)}</div>
-              <p className="text-sm text-gray-600 leading-relaxed font-medium">&quot;Their upgrade recommendations helped me improve my FPS and streaming performance without overspending. Highly recommended for gamers.&quot;</p>
+            {/* Row 2, Col 1: Video card (long/tall video review) */}
+            <div className="relative rounded-[24px] overflow-hidden bg-[#0a1b2d] min-h-[500px] flex items-center justify-center group cursor-pointer shadow-sm">
+              <img src="/images/testimonial_setup4.png" className="absolute inset-0 w-full h-full object-cover opacity-70 group-hover:opacity-90 group-hover:scale-105 transition-all duration-700" alt="Studio" />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent pointer-events-none" />
+              <div className="relative z-10 flex flex-col items-center space-y-3 text-white">
+                <button className="w-14 h-14 rounded-full bg-white text-[#0a1b2d] flex items-center justify-center shadow-2xl group-hover:scale-110 transition duration-300 border-none cursor-pointer">
+                  <Play className="w-5 h-5 fill-[#0a1b2d] ml-0.5" />
+                </button>
+                <span className="text-[10px] uppercase font-black tracking-[0.2em]">Futuristic Studio</span>
+              </div>
             </div>
-            <div className="flex items-center space-x-3 border-t border-gray-100 pt-4">
-              <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=zeeshan&backgroundColor=ffd5dc" className="w-10 h-10 rounded-full border-2 border-gray-100" alt="Zeeshan" />
-              <div><h5 className="text-sm font-extrabold text-[#0a1b2d]">Zeeshan T.</h5><span className="text-[10px] text-[#103256] font-bold">Verified Buyer ✓</span></div>
-            </div>
-          </div>
 
-          <div className="relative rounded-[24px] overflow-hidden bg-[#0a1b2d] min-h-[300px] flex items-center justify-center group cursor-pointer shadow-sm">
-            <img src="/images/testimonial_setup5.png" className="absolute inset-0 w-full h-full object-cover opacity-70 group-hover:opacity-90 group-hover:scale-105 transition-all duration-700" alt="Blue Room" />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent pointer-events-none" />
-            <div className="relative z-10">
-              <button className="w-14 h-14 rounded-full bg-white text-[#0a1b2d] flex items-center justify-center shadow-2xl group-hover:scale-110 transition duration-300 border-none cursor-pointer"><Play className="w-5 h-5 fill-[#0a1b2d] ml-0.5" /></button>
+            {/* Row 2, Col 2: Text testimonial only (short layout) */}
+            <div className="bg-white rounded-[24px] border border-gray-100 shadow-sm p-6 flex flex-col justify-between min-h-[220px]">
+              <div className="space-y-4">
+                <div className="flex space-x-1 text-amber-400">
+                  {[1,2,3,4,5].map(x => <Star key={x} className="w-4 h-4 fill-current" />)}
+                </div>
+                <p className="text-sm text-gray-600 leading-relaxed font-medium text-left">
+                  &quot;Their upgrade recommendations helped me improve my FPS and streaming performance without overspending. Highly recommended for gamers.&quot;
+                </p>
+              </div>
+              <div className="flex items-center space-x-3 border-t border-gray-100 pt-4 mt-3">
+                <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=zeeshan&backgroundColor=ffd5dc" className="w-10 h-10 rounded-full border-2 border-gray-100" alt="Zeeshan" />
+                <div className="text-left">
+                  <h5 className="text-sm font-extrabold text-[#0a1b2d]">Zeeshan T.</h5>
+                  <span className="text-[10px] text-[#103256] font-bold">Verified Buyer ✓</span>
+                </div>
+              </div>
             </div>
+
+            {/* Row 2, Col 3: Video card (long/tall video review) */}
+            <div className="relative rounded-[24px] overflow-hidden bg-[#0a1b2d] min-h-[500px] flex items-center justify-center group cursor-pointer shadow-sm">
+              <img src="/images/testimonial_setup5.png" className="absolute inset-0 w-full h-full object-cover opacity-70 group-hover:opacity-90 group-hover:scale-105 transition-all duration-700" alt="Blue Room" />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent pointer-events-none" />
+              <div className="relative z-10">
+                <button className="w-14 h-14 rounded-full bg-white text-[#0a1b2d] flex items-center justify-center shadow-2xl group-hover:scale-110 transition duration-300 border-none cursor-pointer">
+                  <Play className="w-5 h-5 fill-[#0a1b2d] ml-0.5" />
+                </button>
+              </div>
+            </div>
+
           </div>
+          {/* Bottom white gradient fade mask */}
+          <div className="absolute bottom-0 left-0 right-0 h-40 bg-gradient-to-t from-white via-white/70 to-transparent pointer-events-none z-10" />
         </div>
 
         <div className="flex justify-center mt-12 pdp-up d2">

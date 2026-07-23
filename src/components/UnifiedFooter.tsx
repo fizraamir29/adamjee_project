@@ -33,7 +33,7 @@ export default function UnifiedFooter({ setIsBuilderOpen }: UnifiedFooterProps) 
   };
 
   return (
-    <footer className="bg-gradient-to-b from-[#1e4a7a] to-[#0d2a52] text-white">
+    <footer className="rounded-t-[32px] md:rounded-t-[48px] overflow-hidden" style={{ background: 'linear-gradient(180deg, #103256 0%, #164475 100%)' }}>
 
       {/* Newsletter */}
       <div className="px-4 md:px-12 py-16">

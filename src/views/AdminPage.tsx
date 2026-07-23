@@ -864,15 +864,41 @@ export default function AdminPage() {
     } catch {}
   }, []);
 
-  // ─── Real-time order polling: refresh every 30s when on dashboard ────────
+  // ─── Real-time instant order polling & BroadcastChannel sync (0-2s latency) ──
   useEffect(() => {
     if (!isAuthenticated) return;
-    const token = localStorage.getItem('token');
-    if (!token) return;
+    const token = localStorage.getItem('token') || '';
+
+    // Initial load
+    loadData(token);
+
+    // 1. High-frequency 2-second polling interval
     const interval = setInterval(() => {
-      loadData(token);
-    }, 30000);
-    return () => clearInterval(interval);
+      const currentToken = localStorage.getItem('token') || token || '';
+      loadData(currentToken);
+    }, 2000);
+
+    // 2. Instant BroadcastChannel & Storage Event sync
+    const triggerSync = () => {
+      const currentToken = localStorage.getItem('token') || token || '';
+      loadData(currentToken);
+    };
+
+    window.addEventListener('adamjee_new_order', triggerSync);
+    window.addEventListener('storage', triggerSync);
+
+    let bc: BroadcastChannel | null = null;
+    try {
+      bc = new BroadcastChannel('adamjee_orders_channel');
+      bc.onmessage = () => triggerSync();
+    } catch (e) {}
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('adamjee_new_order', triggerSync);
+      window.removeEventListener('storage', triggerSync);
+      if (bc) bc.close();
+    };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAuthenticated]);
 
@@ -911,10 +937,24 @@ export default function AdminPage() {
       }
       setProducts(prodData.products || prodData.data || []);
       
-      // Inject some mock draft and abandoned checkout orders for demonstration
+      // Merge live orders with local storage orders to ensure instant display
       const fetchedOrders = ordData.orders || ordData.data || [];
-      const hasDraft = fetchedOrders.some((o: any) => o.orderStatus === 'draft');
+      const localOrders = typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('adamjee_orders') || '[]') : [];
+      
       const finalOrders = [...fetchedOrders];
+      localOrders.forEach((lo: any) => {
+        const loId = lo._id || lo.id || lo.orderId;
+        const exists = finalOrders.some((fo: any) => 
+          (fo._id && fo._id === loId) || 
+          (fo.id && fo.id === loId) || 
+          (fo.orderId && fo.orderId === loId)
+        );
+        if (!exists) {
+          finalOrders.unshift(lo);
+        }
+      });
+
+      const hasDraft = finalOrders.some((o: any) => o.orderStatus === 'draft');
       if (!hasDraft) {
         finalOrders.push({
           _id: 'draft1',
@@ -1938,14 +1978,22 @@ export default function AdminPage() {
               )}
 
               {/* ═══ ORDERS TABS ═══ */}
-              {(activeTab === 'orders-list' || activeTab === 'drafts' || activeTab === 'abandoned-checkouts') && (
+              {(activeTab === 'orders' || activeTab === 'orders-list' || activeTab === 'drafts' || activeTab === 'abandoned-checkouts') && (
                 <div className="space-y-4">
                   {/* Shopify page header */}
                   <div className="flex justify-between items-center">
                     <h1 className="text-xl font-bold capitalize">
-                      {activeTab === 'orders-list' ? 'Orders' : activeTab === 'drafts' ? 'Drafts' : 'Abandoned checkouts'}
+                      {activeTab === 'orders' || activeTab === 'orders-list' ? 'Orders' : activeTab === 'drafts' ? 'Drafts' : 'Abandoned checkouts'}
                     </h1>
-                    <div className="flex gap-2">
+                    <div className="flex gap-2 items-center">
+                      <button
+                        onClick={() => loadData(localStorage.getItem('token') || '')}
+                        className="px-3 py-1.5 border border-emerald-300 text-emerald-800 rounded text-xs font-bold bg-emerald-50 hover:bg-emerald-100 transition-colors flex items-center gap-1.5 shadow-2xs"
+                        title="Click to instantly pull newly placed orders from MongoDB"
+                      >
+                        <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                        Live Auto-Sync (2s)
+                      </button>
                       <button
                         onClick={() => exportCSV(filteredOrders, `${activeTab}.csv`, [
                           { key: 'orderId', label: 'Order' }, { key: 'user.name', label: 'Customer' },
@@ -1967,7 +2015,7 @@ export default function AdminPage() {
 
                   {/* Shopify Filters Tab Header */}
                   <div className="bg-white rounded-lg border border-[#ebebeb] shadow-sm overflow-hidden">
-                    {activeTab === 'orders-list' && (
+                    {(activeTab === 'orders' || activeTab === 'orders-list') && (
                       <div className="flex border-b border-[#ebebeb] overflow-x-auto">
                         {['All', 'Unfulfilled', 'Unpaid', 'Open', 'Closed'].map(tab => (
                           <button
@@ -2030,8 +2078,8 @@ export default function AdminPage() {
                                 {o.orderStatus === 'abandoned' && <AlertTriangle className="w-3.5 h-3.5 text-amber-500 flex-shrink-0" />}
                                 {o.orderId}
                               </td>
-                              <td className="px-5 py-3 text-[#5c5c5c]">{new Date(o.createdAt).toLocaleDateString()}</td>
-                              <td className="px-5 py-3 font-semibold">{o.user?.name || o.guestEmail || 'Guest'}</td>
+                              <td className="px-5 py-3 text-[#5c5c5c]">{new Date(o.createdAt || Date.now()).toLocaleDateString()}</td>
+                              <td className="px-5 py-3 font-semibold">{o.user?.name || o.shippingAddress?.fullName || o.customerName || o.guestEmail || 'Guest'}</td>
                               <td className="px-5 py-3 text-[#5c5c5c]">Online Store</td>
                               <td className="px-5 py-3 font-bold text-right">${o.total?.toFixed(2)}</td>
                               <td className="px-5 py-3"><StatusBadge s={o.paymentStatus || 'pending'} /></td>
