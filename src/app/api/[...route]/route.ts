@@ -25,6 +25,7 @@ import ChatSession from '@/lib/models/ChatSession';
 import Invoice from '@/lib/models/Invoice';
 import Blog from '@/lib/models/Blog';
 import Discount from '@/lib/models/Discount';
+import { sendOrderConfirmationEmail } from '@/lib/email';
 
 export const dynamic = 'force-dynamic'; // Prevent Next.js from caching API responses
 
@@ -1003,7 +1004,10 @@ export async function POST(req: Request, { params }: { params: Promise<{ route: 
     if (pathStr === 'orders') {
       const user = await getAuthenticatedUser(req); // Optional auth
       const { items, shippingAddress, paymentMethod, subtotal, shippingCost, discount, total, notes, guestEmail } = body;
+      const customerEmail = user?.email || guestEmail || shippingAddress?.email || 'customer@adamjeecomputers.com';
+      const customerName = user?.name || shippingAddress?.fullName || 'Valued Customer';
 
+      // Deduct stock in Mock Mode if DB not connected
       if (mongoose.connection.readyState !== 1) {
         const newId = new mongoose.Types.ObjectId().toString();
         const mockOrder = {
@@ -1024,7 +1028,29 @@ export async function POST(req: Request, { params }: { params: Promise<{ route: 
           guestEmail: user ? null : guestEmail
         };
         mockOrdersMemory.unshift(mockOrder as any);
-        return NextResponse.json({ success: true, message: 'Order placed successfully (Mock mode)!', order: mockOrder }, { status: 201 });
+
+        // Deduct mock stock
+        if (Array.isArray(items)) {
+          items.forEach((item: any) => {
+            const p = mockProductsMemory.find(mp => mp._id === item.product || mp.id === item.product || mp.slug === item.product);
+            if (p) {
+              p.stock = Math.max(0, (p.stock || 0) - (item.quantity || 1));
+            }
+          });
+        }
+
+        // Send Order Confirmation Email
+        await sendOrderConfirmationEmail({
+          orderId: mockOrder.orderId,
+          customerName,
+          customerEmail,
+          total: Number(total) || 0,
+          items: items || [],
+          paymentMethod: paymentMethod || 'cod',
+          shippingAddress
+        });
+
+        return NextResponse.json({ success: true, message: 'Order placed successfully!', order: mockOrder }, { status: 201 });
       }
 
       if (!items || items.length === 0) {
@@ -1046,6 +1072,33 @@ export async function POST(req: Request, { params }: { params: Promise<{ route: 
       else orderData.guestEmail = guestEmail;
 
       const order = await Order.create(orderData);
+
+      // Deduct live MongoDB stock
+      if (Array.isArray(items)) {
+        for (const item of items) {
+          try {
+            const itemProdId = item.product;
+            const isMongoId = typeof itemProdId === 'string' && itemProdId.match(/^[0-9a-fA-F]{24}$/);
+            const qList: any[] = [{ id: itemProdId }, { slug: itemProdId }, { code: itemProdId }];
+            if (isMongoId) qList.push({ _id: itemProdId });
+            await Product.updateOne({ $or: qList }, { $inc: { stock: -(item.quantity || 1) } });
+          } catch (e) {
+            console.error('Stock decrement error:', e);
+          }
+        }
+      }
+
+      // Send Order Confirmation Email
+      await sendOrderConfirmationEmail({
+        orderId: order.orderId || order._id.toString(),
+        customerName,
+        customerEmail,
+        total: Number(total) || 0,
+        items: items || [],
+        paymentMethod: paymentMethod || 'cod',
+        shippingAddress
+      });
+
       return NextResponse.json({ success: true, message: 'Order placed successfully!', order }, { status: 201 });
     }
 
