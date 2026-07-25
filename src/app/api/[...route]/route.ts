@@ -25,7 +25,6 @@ import ChatSession from '@/lib/models/ChatSession';
 import Invoice from '@/lib/models/Invoice';
 import Blog from '@/lib/models/Blog';
 import Discount from '@/lib/models/Discount';
-import { sendOrderConfirmationEmail } from '@/lib/email';
 
 export const dynamic = 'force-dynamic'; // Prevent Next.js from caching API responses
 
@@ -1039,17 +1038,6 @@ export async function POST(req: Request, { params }: { params: Promise<{ route: 
           });
         }
 
-        // Send Order Confirmation Email
-        await sendOrderConfirmationEmail({
-          orderId: mockOrder.orderId,
-          customerName,
-          customerEmail,
-          total: Number(total) || 0,
-          items: items || [],
-          paymentMethod: paymentMethod || 'cod',
-          shippingAddress
-        });
-
         return NextResponse.json({ success: true, message: 'Order placed successfully!', order: mockOrder }, { status: 201 });
       }
 
@@ -1087,17 +1075,6 @@ export async function POST(req: Request, { params }: { params: Promise<{ route: 
           }
         }
       }
-
-      // Send Order Confirmation Email
-      await sendOrderConfirmationEmail({
-        orderId: order.orderId || order._id.toString(),
-        customerName,
-        customerEmail,
-        total: Number(total) || 0,
-        items: items || [],
-        paymentMethod: paymentMethod || 'cod',
-        shippingAddress
-      });
 
       return NextResponse.json({ success: true, message: 'Order placed successfully!', order }, { status: 201 });
     }

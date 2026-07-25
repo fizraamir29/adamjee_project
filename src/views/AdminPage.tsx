@@ -11,7 +11,7 @@ import {
   AlertTriangle, CheckSquare, MinusSquare, Bell, Percent, Volume2, Globe, Mail, Sparkles, Menu
 } from 'lucide-react';
 import { Product } from '../types';
-import { saveProducts, saveProduct, deleteProductFromStorage, getProductImage, getCategoryFallbackImage, getBlogs, saveBlogs, saveBlog, deleteBlogFromStorage } from '../utils/storage';
+import { saveProducts, saveProduct, deleteProductFromStorage, getProductImage, getCategoryFallbackImage, getBlogs, saveBlogs, saveBlog, deleteBlogFromStorage, getProducts, INITIAL_PRODUCTS } from '../utils/storage';
 
 /* ─── HELPERS ────────────────────────────────── */
 const statusColors: Record<string, string> = {
@@ -760,6 +760,14 @@ export default function AdminPage() {
   const [inventoryLog, setInventoryLog] = useState<any[]>([]);
   const [inventorySearch, setInventorySearch] = useState('');
   const [inventoryFilter, setInventoryFilter] = useState('All');
+  
+  const [confirmDeleteProduct, setConfirmDeleteProduct] = useState<any>(null);
+  const [toastMsg, setToastMsg] = useState<string>('');
+
+  const showToast = (msg: string) => {
+    setToastMsg(msg);
+    setTimeout(() => setToastMsg(''), 4000);
+  };
 
   // Unified Inbox states
   const [inboxSubTab, setInboxSubTab] = useState<'chats' | 'contact'>('chats');
@@ -982,7 +990,17 @@ export default function AdminPage() {
         setDbStatus('live');
         setDbError('');
       }
-      setProducts(prodData.products || prodData.data || []);
+      const fetchedProducts = prodData.products || prodData.data || [];
+      const localProds = getProducts();
+      const mergedProds = [...fetchedProducts];
+      localProds.forEach((lp: any) => {
+        const lpId = lp._id || lp.id || lp.slug;
+        if (!mergedProds.some(fp => fp._id === lpId || fp.id === lpId || fp.slug === lpId)) {
+          mergedProds.push(lp);
+        }
+      });
+      const finalProds = mergedProds.length > 0 ? mergedProds : INITIAL_PRODUCTS;
+      setProducts(finalProds);
       
       // Merge live orders with local storage orders to ensure instant display
       const fetchedOrders = ordData.orders || ordData.data || [];
@@ -1084,21 +1102,52 @@ export default function AdminPage() {
   };
 
   /* ─── CRUD HANDLERS ────────────────────────── */
-  const handleDeleteProduct = async (id: string) => {
-    if (window.confirm('Delete this product permanently?')) {
-      const token = localStorage.getItem('token');
-      await fetch(`/api/products/${id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } });
-      deleteProductFromStorage(id);
-      if (typeof window !== 'undefined') {
-        window.dispatchEvent(new Event('adamjee_new_product'));
-        try {
-          const bc = new BroadcastChannel('adamjee_products_channel');
-          bc.postMessage('new_product');
-          bc.close();
-        } catch (e) {}
-      }
-      loadData(token!);
+  const executeProductDeletion = async (p: any) => {
+    if (!p) return;
+    const pId = p._id || p.id;
+    const token = localStorage.getItem('token');
+    try {
+      await fetch(`/api/products/${pId}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } });
+    } catch (err) {
+      console.error('Delete product error:', err);
     }
+    deleteProductFromStorage(pId);
+    setProducts(prev => prev.filter(item => item._id !== pId && item.id !== pId && item.slug !== pId));
+    setConfirmDeleteProduct(null);
+    showToast(`Product "${p.name}" deleted successfully!`);
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new Event('adamjee_new_product'));
+      try {
+        const bc = new BroadcastChannel('adamjee_products_channel');
+        bc.postMessage('new_product');
+        bc.close();
+      } catch (e) {}
+    }
+  };
+
+  const handleUpdateOrderStatus = async (orderId: string, newStatus: string) => {
+    const token = localStorage.getItem('token');
+    try {
+      await fetch(`/api/orders/${orderId}/status`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ orderStatus: newStatus })
+      });
+    } catch (err) {
+      console.error('Order status update error:', err);
+    }
+
+    setOrders(prev => prev.map(o => (o.orderId === orderId || o._id === orderId) ? { ...o, orderStatus: newStatus } : o));
+    
+    if (selectedOrderDetail && (selectedOrderDetail.orderId === orderId || selectedOrderDetail._id === orderId)) {
+      setSelectedOrderDetail((prev: any) => prev ? { ...prev, orderStatus: newStatus } : null);
+    }
+
+    const localOrders = typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('adamjee_orders') || '[]') : [];
+    const updatedLocal = localOrders.map((o: any) => (o.orderId === orderId || o._id === orderId) ? { ...o, orderStatus: newStatus } : o);
+    localStorage.setItem('adamjee_orders', JSON.stringify(updatedLocal));
+
+    showToast(`Order #${orderId} status updated to ${newStatus.toUpperCase()}!`);
   };
 
   const handleSaveProduct = async (form: any) => {
@@ -1199,16 +1248,6 @@ export default function AdminPage() {
     setInvoiceTaxRate(storeSettings.defaultTaxRate);
     setCoTaxRate(storeSettings.defaultTaxRate);
     alert('Settings saved successfully!');
-  };
-
-  const handleUpdateOrderStatus = async (orderId: string, status: string) => {
-    const token = localStorage.getItem('token');
-    await fetch(`/api/orders/${orderId}/status`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ orderStatus: status })
-    });
-    loadData(token!);
   };
 
   const handleSaveBlog = async (e: React.FormEvent) => {
@@ -2242,7 +2281,7 @@ export default function AdminPage() {
                                   <td className="px-5 py-3" onClick={e => e.stopPropagation()}><input type="checkbox" className="rounded text-[#164475]" /></td>
                                   <td className="px-5 py-3 font-semibold">
                                     <div className="flex items-center gap-3">
-                                      <img src={p.image} alt={p.name} className="w-10 h-10 object-contain bg-[#f6f6f7] rounded border border-[#cbd5e1] p-0.5" />
+                                      <img src={getProductImage(p)} alt={p.name} onError={(e) => { (e.target as HTMLImageElement).src = getCategoryFallbackImage(p.category, p.name); }} className="w-10 h-10 object-contain bg-[#f6f6f7] rounded border border-[#cbd5e1] p-0.5" />
                                       <div>
                                         <p className="font-bold text-[#1a1a1a] line-clamp-1 max-w-[180px]">{p.name}</p>
                                         <p className="text-[10px] text-[#5c5c5c]">{p.vendor}</p>
@@ -2257,7 +2296,7 @@ export default function AdminPage() {
                                   <td className="px-5 py-3 text-right" onClick={e => e.stopPropagation()}>
                                     <div className="flex gap-1.5 justify-end">
                                       <button onClick={() => { setEditingProduct(p); setShowProductForm(true); }} className="p-1 border rounded bg-white text-[#164475] hover:bg-[#f0f7ff]" title="Edit"><Pencil className="w-3.5 h-3.5" /></button>
-                                      <button onClick={() => handleDeleteProduct(p._id)} className="p-1 border rounded bg-white text-red-500 hover:bg-red-50" title="Delete"><Trash2 className="w-3.5 h-3.5" /></button>
+                                      <button onClick={() => setConfirmDeleteProduct(p)} className="p-1 border rounded bg-white text-red-500 hover:bg-red-50" title="Delete"><Trash2 className="w-3.5 h-3.5" /></button>
                                     </div>
                                   </td>
                                 </tr>
@@ -3801,6 +3840,43 @@ export default function AdminPage() {
             <div className="flex gap-2 justify-end border-t pt-4">
               <button onClick={() => { setStockAdjustProduct(inventoryDetailProduct); setInventoryDetailProduct(null); }} className="px-4 py-2 bg-[#164475] text-white text-xs font-bold rounded hover:bg-[#10355c]">Adjust stock level</button>
               <button onClick={() => setInventoryDetailProduct(null)} className="px-4 py-2 border rounded text-xs font-bold hover:bg-gray-50">Close</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Floating Toast Notification Banner */}
+      {toastMsg && (
+        <div className="fixed top-5 right-5 z-[99999] bg-[#164475] text-white text-xs font-bold px-4 py-3 rounded-lg shadow-2xl flex items-center gap-2 border border-[#3b72aa]">
+          <CheckCircle className="w-4 h-4 text-green-400 flex-shrink-0" />
+          <span>{toastMsg}</span>
+        </div>
+      )}
+
+      {/* Custom Delete Product Modal Dialog */}
+      {confirmDeleteProduct && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[99999] flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl max-w-md w-full p-6 shadow-2xl space-y-4 border border-gray-100 animate-in fade-in zoom-in duration-150">
+            <div className="flex items-center gap-3 text-red-600">
+              <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0">
+                <Trash2 className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="font-bold text-base text-[#1a1a1a]">Delete Product</h3>
+                <p className="text-xs text-gray-500">This action is permanent and cannot be undone.</p>
+              </div>
+            </div>
+            <p className="text-xs text-[#5c5c5c] bg-gray-50 p-3 rounded border border-gray-200">
+              Are you sure you want to delete <strong className="text-[#1a1a1a]">{confirmDeleteProduct.name}</strong> (SKU: {confirmDeleteProduct.code || 'N/A'})?
+            </p>
+            <div className="flex gap-3 justify-end pt-2">
+              <button type="button" onClick={() => setConfirmDeleteProduct(null)} className="px-4 py-2 border border-gray-300 rounded text-xs font-bold text-[#5c5c5c] hover:bg-gray-50 transition-colors">
+                Cancel
+              </button>
+              <button type="button" onClick={() => executeProductDeletion(confirmDeleteProduct)} className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded text-xs font-bold shadow-sm transition-colors flex items-center gap-1.5">
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>Yes, Delete Product</span>
+              </button>
             </div>
           </div>
         </div>
