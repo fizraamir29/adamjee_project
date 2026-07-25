@@ -522,7 +522,9 @@ function Stars({ rating }: { rating: number }) {
 ══════════════════════════════════════════════════════════════════ */
 export default function ProductListingPage({ handleAddToCart, formatPrice }: ProductListingPageProps) {
   const { id } = useParams() as { id: string };
-  const [productsList, setProductsList] = useState<Product[]>(() => INITIAL_PRODUCTS);
+  const [productsList, setProductsList] = useState<Product[]>(() => getProducts());
+  const [fetchedProduct, setFetchedProduct] = useState<Product | null>(null);
+
   useEffect(() => {
     setProductsList(getProducts());
     fetch('/api/products?limit=100')
@@ -536,7 +538,24 @@ export default function ProductListingPage({ handleAddToCart, formatPrice }: Pro
       .catch(console.error);
   }, []);
 
-  const product = productsList.find(p => p.id === id || p._id === id || p.slug === id) || productsList[0];
+  useEffect(() => {
+    if (id && !productsList.some(p => p.id === id || p._id === id || p.slug === id) && !INITIAL_PRODUCTS.some(p => p.id === id || p._id === id || p.slug === id)) {
+      fetch(`/api/products/${id}`)
+        .then(res => res.json())
+        .then(data => {
+          if (data.success && data.product) {
+            setFetchedProduct(data.product);
+          }
+        })
+        .catch(console.error);
+    }
+  }, [id, productsList]);
+
+  const product = fetchedProduct
+    || productsList.find(p => p.id === id || p._id === id || p.slug === id)
+    || INITIAL_PRODUCTS.find(p => p.id === id || p._id === id || p.slug === id)
+    || productsList[0];
+
   const rawImages = (product.images && product.images.length > 0)
     ? product.images
     : [product.image, ...(product.additionalImages || [])];

@@ -11,7 +11,7 @@ import {
   AlertTriangle, CheckSquare, MinusSquare, Bell, Percent, Volume2, Globe, Mail, Sparkles, Menu
 } from 'lucide-react';
 import { Product } from '../types';
-import { saveProducts, saveProduct, deleteProductFromStorage, getProductImage, getCategoryFallbackImage } from '../utils/storage';
+import { saveProducts, saveProduct, deleteProductFromStorage, getProductImage, getCategoryFallbackImage, getBlogs, saveBlogs, saveBlog, deleteBlogFromStorage } from '../utils/storage';
 
 /* ─── HELPERS ────────────────────────────────── */
 const statusColors: Record<string, string> = {
@@ -200,7 +200,8 @@ function ProductFormModal({ product, onClose, onSave }: ProductFormProps) {
                   <input type="file" multiple accept="image/*" className="hidden"
                     onChange={(e) => {
                       const files = Array.from(e.target.files || []);
-                      files.forEach(file => {
+                      files.forEach(async (file) => {
+                        // Base64 instant local preview
                         const reader = new FileReader();
                         reader.onloadend = () => {
                           const base64 = reader.result as string;
@@ -210,6 +211,29 @@ function ProductFormModal({ product, onClose, onSave }: ProductFormProps) {
                           });
                         };
                         reader.readAsDataURL(file);
+
+                        // Upload to server endpoint to get permanent server URL
+                        try {
+                          const formData = new FormData();
+                          formData.append('image', file);
+                          const res = await fetch('/api/upload', {
+                            method: 'POST',
+                            body: formData,
+                          });
+                          const data = await res.json();
+                          if (data.success && data.image) {
+                            setForm(prev => {
+                              // replace preview with uploaded server url
+                              if (prev.image && prev.image.startsWith('data:')) {
+                                return { ...prev, image: data.image };
+                              }
+                              const updatedAdd = prev.additionalImages.map((img: string) => img.startsWith('data:') ? data.image : img);
+                              return { ...prev, additionalImages: updatedAdd };
+                            });
+                          }
+                        } catch (err) {
+                          console.error('File upload failed:', err);
+                        }
                       });
                     }} />
                 </label>
@@ -994,11 +1018,22 @@ export default function AdminPage() {
       setMessages(msgData.messages || msgData.data || []);
       setUsers(usersData.users || usersData.data || []);
       setInvoices(invData.invoices || []);
-      setBlogs(blogData.blogs || []);
+      
+      const fetchedBlogs = blogData.blogs || [];
+      const localBlogs = getBlogs();
+      const mergedBlogs = [...fetchedBlogs];
+      localBlogs.forEach(lb => {
+        const lbId = lb._id || lb.id || lb.slug;
+        if (!mergedBlogs.some(fb => fb._id === lbId || fb.id === lbId || fb.slug === lbId)) {
+          mergedBlogs.push(lb);
+        }
+      });
+      setBlogs(mergedBlogs);
       setDiscounts(discData.discounts || []);
       setChatSessions(chatData.sessions || []);
 
       if (prodRes.ok) saveProducts(prodData.products || prodData.data || []);
+      if (blogRes.ok) saveBlogs(mergedBlogs);
     } catch (err) {
       console.error('Failed to load admin data:', err);
       setDbStatus('mock');
@@ -1163,7 +1198,6 @@ export default function AdminPage() {
     loadData(token!);
   };
 
-  /* ─── BLOGS HANDLERS ───────────────────────── */
   const handleSaveBlog = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!blogTitle.trim()) return;
@@ -1172,8 +1206,9 @@ export default function AdminPage() {
     
     try {
       let res;
-      if (editingBlog?._id) {
-        res = await fetch(`/api/blogs/${editingBlog._id}`, {
+      if (editingBlog?._id || editingBlog?.id) {
+        const bId = editingBlog._id || editingBlog.id;
+        res = await fetch(`/api/blogs/${bId}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
           body: JSON.stringify(blogData)
@@ -1186,6 +1221,12 @@ export default function AdminPage() {
         });
       }
       if (res.ok) {
+        const data = await res.json().catch(() => ({}));
+        const savedItem = data.blog || blogData;
+        saveBlog(savedItem);
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new Event('adamjee_new_blog'));
+        }
         setShowBlogForm(false);
         setEditingBlog(null);
         setBlogTitle(''); setBlogContent(''); setBlogImage(''); setBlogExcerpt('');
@@ -1200,6 +1241,10 @@ export default function AdminPage() {
     if (window.confirm('Delete this blog post?')) {
       const token = localStorage.getItem('token');
       await fetch(`/api/blogs/${id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } });
+      deleteBlogFromStorage(id);
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new Event('adamjee_new_blog'));
+      }
       loadData(token!);
     }
   };

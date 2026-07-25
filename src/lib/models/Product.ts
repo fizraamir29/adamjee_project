@@ -26,6 +26,8 @@ const productSchema = new mongoose.Schema({
     required: true,
     enum: ['Desktops', 'Laptops', 'Components', 'Peripherals', 'Accessories', 'Monitors', 'Networking', 'Headphones', 'Earphones', 'Speakers'],
   },
+  id: { type: String },
+  image: { type: String, default: '' },
   images: [String],
   variations: [variationSchema],
   specifications: [{ label: String, value: String }],

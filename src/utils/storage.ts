@@ -30,7 +30,7 @@ export const getCategoryFallbackImage = (category?: string, name?: string): stri
 
 export const getProductImage = (product: any): string => {
   if (!product) return getCategoryFallbackImage();
-  const img = product.image || (Array.isArray(product.images) && product.images[0]);
+  const img = product.image || (Array.isArray(product.images) && product.images[0]) || (Array.isArray(product.additionalImages) && product.additionalImages[0]);
   if (img && typeof img === 'string' && img.trim().length > 0) {
     return img;
   }
@@ -194,4 +194,50 @@ export const toggleWishlist = (productId: string): boolean => {
 export const isInWishlist = (productId: string): boolean => {
   if (typeof window === 'undefined') return false;
   return getWishlist().includes(productId);
+};
+
+export interface BlogItem {
+  _id?: string;
+  id?: string;
+  title: string;
+  slug?: string;
+  content: string;
+  author?: string;
+  image?: string;
+  category?: string;
+  excerpt?: string;
+  isPublished?: boolean;
+  publishedAt?: string;
+  createdAt?: string;
+}
+
+export const getBlogs = (): BlogItem[] => {
+  if (typeof window === 'undefined') return [];
+  const data = localStorage.getItem('adamjee_blogs');
+  return data ? JSON.parse(data) : [];
+};
+
+export const saveBlogs = (blogs: BlogItem[]) => {
+  if (typeof window === 'undefined') return;
+  localStorage.setItem('adamjee_blogs', JSON.stringify(blogs));
+};
+
+export const saveBlog = (blog: BlogItem) => {
+  if (typeof window === 'undefined' || !blog) return;
+  const blogs = getBlogs();
+  const idToMatch = blog._id || blog.id || blog.slug;
+  const idx = blogs.findIndex(b => b._id === idToMatch || b.id === idToMatch || b.slug === idToMatch);
+  if (idx !== -1) {
+    blogs[idx] = { ...blogs[idx], ...blog };
+  } else {
+    blogs.unshift(blog);
+  }
+  localStorage.setItem('adamjee_blogs', JSON.stringify(blogs));
+};
+
+export const deleteBlogFromStorage = (id: string) => {
+  if (typeof window === 'undefined' || !id) return;
+  const blogs = getBlogs();
+  const filtered = blogs.filter(b => b._id !== id && b.id !== id && b.slug !== id);
+  localStorage.setItem('adamjee_blogs', JSON.stringify(filtered));
 };

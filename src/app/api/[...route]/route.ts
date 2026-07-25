@@ -255,14 +255,15 @@ export async function GET(req: Request, { params }: { params: Promise<{ route: s
     if (route[0] === 'products' && route.length === 2) {
       const identifier = route[1];
       if (mongoose.connection.readyState !== 1) {
-        const product = mockProductsMemory.find(p => p._id === identifier || p.slug === identifier || p.id === identifier);
+        const product = mockProductsMemory.find(p => p._id === identifier || p.slug === identifier || p.id === identifier || p.code === identifier);
         if (!product) return NextResponse.json({ success: false, message: 'Product not found' }, { status: 404 });
         return NextResponse.json({ success: true, product });
       }
 
-      const product = await Product.findOne({
-        $or: [{ slug: identifier }, { _id: identifier.match(/^[0-9a-fA-F]{24}$/) ? identifier : null }],
-      });
+      const isMongoId = identifier.match(/^[0-9a-fA-F]{24}$/);
+      const queryList: any[] = [{ slug: identifier }, { id: identifier }, { code: identifier }];
+      if (isMongoId) queryList.push({ _id: identifier });
+      const product = await Product.findOne({ $or: queryList });
 
       if (!product) return NextResponse.json({ success: false, message: 'Product not found' }, { status: 404 });
       return NextResponse.json({ success: true, product });
@@ -584,10 +585,13 @@ export async function GET(req: Request, { params }: { params: Promise<{ route: s
     if (route[0] === 'blogs' && route.length === 2) {
       const blogId = route[1];
       if (mongoose.connection.readyState !== 1) {
-        const blog = mockBlogsMemory.find(b => b.id === blogId || b._id === blogId);
+        const blog = mockBlogsMemory.find(b => b.id === blogId || b._id === blogId || b.slug === blogId);
         return NextResponse.json({ success: !!blog, blog });
       }
-      const blog = await Blog.findById(blogId);
+      const isMongoId = blogId.match(/^[0-9a-fA-F]{24}$/);
+      const queryList: any[] = [{ slug: blogId }, { id: blogId }];
+      if (isMongoId) queryList.push({ _id: blogId });
+      const blog = await Blog.findOne({ $or: queryList });
       return NextResponse.json({ success: !!blog, blog });
     }
 
@@ -1564,7 +1568,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ route: s
       const productId = route[1];
 
       if (mongoose.connection.readyState !== 1) {
-        const index = mockProductsMemory.findIndex(p => p._id === productId || p.id === productId);
+        const index = mockProductsMemory.findIndex(p => p._id === productId || p.id === productId || p.slug === productId);
         if (index === -1) return NextResponse.json({ success: false, message: 'Product not found' }, { status: 404 });
         const slug = body.name ? body.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') : mockProductsMemory[index].slug;
         const mockProduct = {
@@ -1578,8 +1582,9 @@ export async function PUT(req: Request, { params }: { params: Promise<{ route: s
       }
 
       const isMongoId = productId.match(/^[0-9a-fA-F]{24}$/);
-      const query = isMongoId ? { _id: productId } : { slug: productId };
-      const product = await Product.findOneAndUpdate(query, body, { new: true, runValidators: true });
+      const queryList: any[] = [{ slug: productId }, { id: productId }, { code: productId }];
+      if (isMongoId) queryList.push({ _id: productId });
+      const product = await Product.findOneAndUpdate({ $or: queryList }, body, { new: true, runValidators: true });
       if (!product) return NextResponse.json({ success: false, message: 'Product not found' }, { status: 404 });
       return NextResponse.json({ success: true, product });
     }
@@ -1676,7 +1681,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ route: s
       }
       const blogId = route[1];
       if (mongoose.connection.readyState !== 1) {
-        const index = mockBlogsMemory.findIndex(b => b._id === blogId || b.id === blogId);
+        const index = mockBlogsMemory.findIndex(b => b._id === blogId || b.id === blogId || b.slug === blogId);
         if (index === -1) return NextResponse.json({ success: false, message: 'Blog post not found' }, { status: 404 });
         const slug = body.title ? body.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') : mockBlogsMemory[index].slug;
         mockBlogsMemory[index] = {
@@ -1687,7 +1692,10 @@ export async function PUT(req: Request, { params }: { params: Promise<{ route: s
         };
         return NextResponse.json({ success: true, blog: mockBlogsMemory[index] });
       }
-      const blog = await Blog.findByIdAndUpdate(blogId, body, { new: true, runValidators: true });
+      const isMongoId = blogId.match(/^[0-9a-fA-F]{24}$/);
+      const queryList: any[] = [{ slug: blogId }, { id: blogId }];
+      if (isMongoId) queryList.push({ _id: blogId });
+      const blog = await Blog.findOneAndUpdate({ $or: queryList }, body, { new: true, runValidators: true });
       if (!blog) return NextResponse.json({ success: false, message: 'Blog post not found' }, { status: 404 });
       return NextResponse.json({ success: true, blog });
     }
@@ -1734,15 +1742,16 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ route
       const productId = route[1];
 
       if (mongoose.connection.readyState !== 1) {
-        const index = mockProductsMemory.findIndex(p => p._id === productId || p.id === productId);
+        const index = mockProductsMemory.findIndex(p => p._id === productId || p.id === productId || p.slug === productId);
         if (index === -1) return NextResponse.json({ success: false, message: 'Product not found' }, { status: 404 });
         mockProductsMemory.splice(index, 1);
         return NextResponse.json({ success: true, message: 'Product deleted successfully (Mock mode)' });
       }
 
       const isMongoId = productId.match(/^[0-9a-fA-F]{24}$/);
-      const query = isMongoId ? { _id: productId } : { slug: productId };
-      const product = await Product.findOneAndDelete(query);
+      const queryList: any[] = [{ slug: productId }, { id: productId }, { code: productId }];
+      if (isMongoId) queryList.push({ _id: productId });
+      const product = await Product.findOneAndDelete({ $or: queryList });
       if (!product) return NextResponse.json({ success: false, message: 'Product not found' }, { status: 404 });
       return NextResponse.json({ success: true, message: 'Product deleted successfully' });
     }
@@ -1797,12 +1806,15 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ route
       }
       const blogId = route[1];
       if (mongoose.connection.readyState !== 1) {
-        const index = mockBlogsMemory.findIndex(b => b._id === blogId || b.id === blogId);
+        const index = mockBlogsMemory.findIndex(b => b._id === blogId || b.id === blogId || b.slug === blogId);
         if (index === -1) return NextResponse.json({ success: false, message: 'Blog post not found' }, { status: 404 });
         mockBlogsMemory.splice(index, 1);
         return NextResponse.json({ success: true, message: 'Blog post deleted successfully (Mock mode)' });
       }
-      const blog = await Blog.findByIdAndDelete(blogId);
+      const isMongoId = blogId.match(/^[0-9a-fA-F]{24}$/);
+      const queryList: any[] = [{ slug: blogId }, { id: blogId }];
+      if (isMongoId) queryList.push({ _id: blogId });
+      const blog = await Blog.findOneAndDelete({ $or: queryList });
       if (!blog) return NextResponse.json({ success: false, message: 'Blog post not found' }, { status: 404 });
       return NextResponse.json({ success: true, message: 'Blog post deleted successfully' });
     }

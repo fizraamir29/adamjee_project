@@ -69,33 +69,73 @@ Turn off unnecessary startup programs and background services to free up system 
   }
 };
 
+import { getBlogs } from '../utils/storage';
+
 export default function BlogPostPage() {
   const { id } = useParams() as { id: string };
   const [post, setPost] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (STATIC_POSTS[id]) {
-      setPost(STATIC_POSTS[id]);
-      setLoading(false);
-    } else {
-      fetch(`/api/blogs/${id}`)
-        .then(res => res.json())
-        .then(data => {
-          if (data.success && data.blog) {
-            setPost({
-              title: data.blog.title,
-              content: data.blog.content,
-              image: data.blog.image || 'https://images.unsplash.com/photo-1587202372634-32705e3bf49c?auto=format&fit=crop&w=1200&q=80',
-              category: data.blog.category || 'Guides',
-              date: new Date(data.blog.publishedAt || data.blog.createdAt).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' }),
-              author: data.blog.author || 'Adamjee Team'
-            });
-          }
-        })
-        .catch(err => console.error("Failed to fetch blog post:", err))
-        .finally(() => setLoading(false));
-    }
+    if (!id) return;
+    
+    // First try fetching from API endpoint
+    fetch(`/api/blogs/${id}`)
+      .then(res => res.json())
+      .then(data => {
+        if (data.success && data.blog) {
+          setPost({
+            title: data.blog.title,
+            content: data.blog.content,
+            image: data.blog.image || 'https://images.unsplash.com/photo-1587202372634-32705e3bf49c?auto=format&fit=crop&w=1200&q=80',
+            category: data.blog.category || 'Guides',
+            date: new Date(data.blog.publishedAt || data.blog.createdAt || Date.now()).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' }),
+            author: data.blog.author || 'Adamjee Team'
+          });
+          setLoading(false);
+          return;
+        }
+        
+        // Fallback to localStorage blogs
+        const localBlogs = getBlogs();
+        const matchedLocal = localBlogs.find(b => b._id === id || b.id === id || b.slug === id);
+        if (matchedLocal) {
+          setPost({
+            title: matchedLocal.title,
+            content: matchedLocal.content,
+            image: matchedLocal.image || 'https://images.unsplash.com/photo-1587202372634-32705e3bf49c?auto=format&fit=crop&w=1200&q=80',
+            category: matchedLocal.category || 'Guides',
+            date: new Date(matchedLocal.publishedAt || matchedLocal.createdAt || Date.now()).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' }),
+            author: matchedLocal.author || 'Adamjee Team'
+          });
+          setLoading(false);
+          return;
+        }
+
+        // Fallback to STATIC_POSTS
+        if (STATIC_POSTS[id]) {
+          setPost(STATIC_POSTS[id]);
+        }
+        setLoading(false);
+      })
+      .catch(err => {
+        console.error("Failed to fetch blog post:", err);
+        const localBlogs = getBlogs();
+        const matchedLocal = localBlogs.find(b => b._id === id || b.id === id || b.slug === id);
+        if (matchedLocal) {
+          setPost({
+            title: matchedLocal.title,
+            content: matchedLocal.content,
+            image: matchedLocal.image || 'https://images.unsplash.com/photo-1587202372634-32705e3bf49c?auto=format&fit=crop&w=1200&q=80',
+            category: matchedLocal.category || 'Guides',
+            date: new Date(matchedLocal.publishedAt || matchedLocal.createdAt || Date.now()).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' }),
+            author: matchedLocal.author || 'Adamjee Team'
+          });
+        } else if (STATIC_POSTS[id]) {
+          setPost(STATIC_POSTS[id]);
+        }
+        setLoading(false);
+      });
   }, [id]);
 
   if (loading) {

@@ -43,29 +43,52 @@ const STATIC_POSTS = [
   }
 ];
 
+import { getBlogs } from '../utils/storage';
+
 export default function BlogListingPage() {
   const [posts, setPosts] = useState<any[]>(STATIC_POSTS);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch('/api/blogs')
-      .then(res => res.json())
-      .then(data => {
-        if (data.success && data.blogs && data.blogs.length > 0) {
-          const formatted = data.blogs.map((b: any) => ({
-            id: b._id || b.id,
+    const fetchBlogs = () => {
+      fetch('/api/blogs')
+        .then(res => res.json())
+        .then(data => {
+          const apiBlogs = (data.success && data.blogs) ? data.blogs : [];
+          const localBlogs = getBlogs();
+          const merged = [...apiBlogs];
+          localBlogs.forEach(lb => {
+            const lbId = lb._id || lb.id || lb.slug;
+            if (!merged.some(fb => fb._id === lbId || fb.id === lbId || fb.slug === lbId)) {
+              merged.push(lb);
+            }
+          });
+
+          const blogListToUse = merged.length > 0 ? merged : STATIC_POSTS;
+          const formatted = blogListToUse.map((b: any) => ({
+            id: b._id || b.id || b.slug,
             title: b.title,
-            excerpt: b.excerpt || (b.content.length > 150 ? b.content.substring(0, 150) + '...' : b.content),
+            excerpt: b.excerpt || (b.content ? (b.content.length > 150 ? b.content.substring(0, 150) + '...' : b.content) : ''),
             image: b.image || 'https://images.unsplash.com/photo-1587202372634-32705e3bf49c?auto=format&fit=crop&w=800&q=80',
             category: b.category || 'Guides',
-            date: new Date(b.publishedAt || b.createdAt).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' }),
+            date: new Date(b.publishedAt || b.createdAt || Date.now()).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' }),
             author: b.author || 'Adamjee Team'
           }));
           setPosts(formatted);
-        }
-      })
-      .catch(err => console.error("Failed to fetch blog list:", err))
-      .finally(() => setLoading(false));
+        })
+        .catch(err => console.error("Failed to fetch blog list:", err))
+        .finally(() => setLoading(false));
+    };
+
+    fetchBlogs();
+
+    window.addEventListener('adamjee_new_blog', fetchBlogs);
+    window.addEventListener('storage', fetchBlogs);
+
+    return () => {
+      window.removeEventListener('adamjee_new_blog', fetchBlogs);
+      window.removeEventListener('storage', fetchBlogs);
+    };
   }, []);
 
   if (loading) {
