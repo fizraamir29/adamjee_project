@@ -180,8 +180,9 @@ export async function GET(req: Request, { params }: { params: Promise<{ route: s
       const maxPrice = searchParams.get('maxPrice');
       const tag = searchParams.get('tag');
       const sort = searchParams.get('sort');
+      const isAll = searchParams.get('all') === 'true';
       const page = searchParams.get('page') || '1';
-      const limit = searchParams.get('limit') || '12';
+      const limit = isAll ? '1000' : (searchParams.get('limit') || '12');
       const featured = searchParams.get('featured');
 
       if (mongoose.connection.readyState !== 1) {
@@ -198,11 +199,14 @@ export async function GET(req: Request, { params }: { params: Promise<{ route: s
         return NextResponse.json({
           success: true,
           products: filtered,
-          pagination: { total: filtered.length, page: 1, pages: 1, limit: 12 }
+          pagination: { total: filtered.length, page: 1, pages: 1, limit: Number(limit) }
         });
       }
 
-      const query: any = { isPublished: true };
+      const query: any = {};
+      if (!isAll) {
+        query.isPublished = true;
+      }
       if (keyword) query.name = { $regex: keyword, $options: 'i' };
       if (category) query.category = category;
       if (tag) query.tag = tag;
@@ -223,7 +227,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ route: s
       const sortBy = sortOptions[sort || ''] || sortOptions['default'];
 
       try {
-        const skip = (Number(page) - 1) * Number(limit);
+        const skip = isAll ? 0 : (Number(page) - 1) * Number(limit);
         const [products, total] = await Promise.all([
           Product.find(query).sort(sortBy).skip(skip).limit(Number(limit)),
           Product.countDocuments(query),

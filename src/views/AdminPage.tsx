@@ -218,10 +218,23 @@ function ProductFormModal({ product, onClose, onSave }: ProductFormProps) {
                   className="w-full px-3 py-2 border border-[#cbd5e1] bg-white rounded text-sm focus:outline-none focus:border-[#164475] focus:ring-1 focus:ring-[#164475]" placeholder="Short sleeve t-shirt" />
               </div>
               <div>
-                <label className="block text-xs font-bold text-[#1a1a1a] mb-1.5">Description</label>
+                <div className="flex justify-between items-center mb-1.5">
+                  <label className="block text-xs font-bold text-[#1a1a1a]">Description</label>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (!form.name.trim()) return;
+                      const aiDesc = `The ${form.name} is engineered for peak performance, ultra-fast responsiveness, and maximum durability. Custom built by Adamjee Computers with top-grade components, this ${form.category.toLowerCase()} unit delivers exceptional reliability, low-latency execution, and sleek modern aesthetics for gaming and heavy workloads.`;
+                      setForm(prev => ({ ...prev, description: aiDesc }));
+                    }}
+                    className="inline-flex items-center gap-1 text-[11px] font-bold text-[#164475] hover:text-[#0f2a4a] bg-blue-50 px-2 py-0.5 rounded border border-blue-200"
+                  >
+                    <Sparkles className="w-3 h-3 text-amber-500" /> Auto-Generate AI Description
+                  </button>
+                </div>
                 <textarea value={form.description} onChange={e => setForm({...form, description: e.target.value})}
                   rows={6} className="w-full px-3 py-2 border border-[#cbd5e1] bg-white rounded text-sm focus:outline-none focus:border-[#164475] focus:ring-1 focus:ring-[#164475] resize-none"
-                  placeholder="Explain your product benefits..." />
+                  placeholder="Explain your product benefits or click Auto-Generate AI Description..." />
               </div>
             </div>
 
@@ -962,7 +975,7 @@ export default function AdminPage() {
       const headers = { Authorization: `Bearer ${token}` };
       const [statsRes, prodRes, ordRes, msgRes, usersRes, invRes, blogRes, discRes, chatRes] = await Promise.all([
         fetch('/api/admin/stats', { headers }),
-        fetch('/api/products'),
+        fetch('/api/products?all=true&limit=1000'),
         fetch('/api/orders', { headers }),
         fetch('/api/contact', { headers }),
         fetch('/api/admin/users', { headers }),
@@ -992,15 +1005,26 @@ export default function AdminPage() {
       }
       const fetchedProducts = prodData.products || prodData.data || [];
       const localProds = getProducts();
-      const mergedProds = [...fetchedProducts];
-      localProds.forEach((lp: any) => {
-        const lpId = lp._id || lp.id || lp.slug;
-        if (!mergedProds.some(fp => fp._id === lpId || fp.id === lpId || fp.slug === lpId)) {
-          mergedProds.push(lp);
-        }
+      
+      const mergedMap = new Map<string, any>();
+      INITIAL_PRODUCTS.forEach((ip: any) => {
+        const key = ip._id || ip.id || ip.slug;
+        if (key) mergedMap.set(key, ip);
       });
-      const finalProds = mergedProds.length > 0 ? mergedProds : INITIAL_PRODUCTS;
+      fetchedProducts.forEach((fp: any) => {
+        const key = fp._id || fp.id || fp.slug;
+        if (key) mergedMap.set(key, fp);
+      });
+      localProds.forEach((lp: any) => {
+        const key = lp._id || lp.id || lp.slug;
+        if (key) mergedMap.set(key, lp);
+      });
+
+      const finalProds = Array.from(mergedMap.values());
+      finalProds.sort((a: any, b: any) => (a.name || '').localeCompare(b.name || ''));
+
       setProducts(finalProds);
+      saveProducts(finalProds);
       
       // Merge live orders with local storage orders to ensure instant display
       const fetchedOrders = ordData.orders || ordData.data || [];

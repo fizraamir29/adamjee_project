@@ -560,8 +560,13 @@ export default function ProductListingPage({ handleAddToCart, formatPrice }: Pro
     ? product.images
     : [product.image, ...(product.additionalImages || [])];
   const images = rawImages.filter((img): img is string => typeof img === 'string' && img.trim().length > 0);
+  const fallbackCatImg = getCategoryFallbackImage(product.category, product.name);
   if (images.length === 0) {
-    images.push(getCategoryFallbackImage(product.category, product.name));
+    images.push(fallbackCatImg);
+  }
+  // Ensure at least 4 thumbnail views for Shopify-style gallery swapping
+  while (images.length < 4) {
+    images.push(fallbackCatImg);
   }
 
   /* Related: same category first, then others */
