@@ -31,13 +31,13 @@ export const getCategoryFallbackImage = (category?: string, name?: string): stri
 export const getProductImage = (product: any): string => {
   if (!product) return getCategoryFallbackImage();
   let img = product.image;
-  if (!img || typeof img !== 'string' || img.trim().length === 0 || img.startsWith('/uploads/')) {
-    img = Array.isArray(product.images) && product.images.find((i: any) => typeof i === 'string' && i.trim().length > 0 && !i.startsWith('/uploads/'));
+  if (!img || typeof img !== 'string' || img.trim().length === 0) {
+    img = Array.isArray(product.images) && product.images.find((i: any) => typeof i === 'string' && i.trim().length > 0);
   }
-  if (!img || typeof img !== 'string' || img.trim().length === 0 || img.startsWith('/uploads/')) {
-    img = Array.isArray(product.additionalImages) && product.additionalImages.find((i: any) => typeof i === 'string' && i.trim().length > 0 && !i.startsWith('/uploads/'));
+  if (!img || typeof img !== 'string' || img.trim().length === 0) {
+    img = Array.isArray(product.additionalImages) && product.additionalImages.find((i: any) => typeof i === 'string' && i.trim().length > 0);
   }
-  if (img && typeof img === 'string' && img.trim().length > 0 && !img.startsWith('/uploads/')) {
+  if (img && typeof img === 'string' && img.trim().length > 0) {
     return img;
   }
   return getCategoryFallbackImage(product?.category, product?.name);

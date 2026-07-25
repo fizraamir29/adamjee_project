@@ -8,7 +8,7 @@ import {
   CheckCircle, Clock, Truck, AlertCircle, FileText, Printer,
   Boxes, ArrowUpDown, ArrowUp, ArrowDown, Download, ChevronLeft,
   ChevronRight, PackagePlus, PackageMinus, SlidersHorizontal,
-  AlertTriangle, CheckSquare, MinusSquare, Bell, Percent, Volume2, Globe, Mail, Sparkles, Menu
+  AlertTriangle, CheckSquare, MinusSquare, Bell, Percent, Volume2, Globe, Mail, Sparkles, Menu, Tag
 } from 'lucide-react';
 import { Product } from '../types';
 import { saveProducts, saveProduct, deleteProductFromStorage, getProductImage, getCategoryFallbackImage, getBlogs, saveBlogs, saveBlog, deleteBlogFromStorage, getProducts, INITIAL_PRODUCTS } from '../utils/storage';
@@ -161,9 +161,10 @@ interface ProductFormProps {
   product?: any;
   onClose: () => void;
   onSave: (p: any) => void;
+  customCollections?: string[];
 }
 
-function ProductFormModal({ product, onClose, onSave }: ProductFormProps) {
+function ProductFormModal({ product, onClose, onSave, customCollections = [] }: ProductFormProps) {
   const [form, setForm] = useState({
     name: product?.name ?? '',
     code: product?.code ?? '',
@@ -187,10 +188,17 @@ function ProductFormModal({ product, onClose, onSave }: ProductFormProps) {
     chargeTax: product?.chargeTax ?? true,
     status: product?.status ?? 'active',
     variants: product?.variants ?? [],
+    specBulletsInput: Array.isArray(product?.specBullets) ? product.specBullets.join('\n') : '',
+    feature1Title: product?.feature1Title ?? '',
+    feature1Desc: product?.feature1Desc ?? '',
+    feature1Img: product?.feature1Img ?? '',
+    feature2Title: product?.feature2Title ?? '',
+    feature2Desc: product?.feature2Desc ?? '',
+    feature2Img: product?.feature2Img ?? '',
   });
   const [variantInput, setVariantInput] = useState('');
 
-  const categories = ['Desktops','Laptops','Components','Peripherals','Accessories','Monitors','Networking','Headphones','Earphones','Speakers'];
+  const categories = Array.from(new Set(['Desktops','Laptops','Components','Peripherals','Accessories','Monitors','Networking','Headphones','Earphones','Speakers', ...customCollections]));
 
   const addVariant = () => {
     if (variantInput.trim()) {
@@ -445,12 +453,70 @@ function ProductFormModal({ product, onClose, onSave }: ProductFormProps) {
                 </div>
               </div>
             </div>
+            <div className="bg-white p-5 rounded-lg border border-[#ebebeb] shadow-sm space-y-3">
+              <h3 className="text-sm font-bold text-[#1a1a1a]">Product Page Bullet Points (Specs)</h3>
+              <p className="text-[11px] text-[#5c5c5c]">Enter bullet points to display on the product detail page (1 bullet point per line):</p>
+              <textarea
+                value={form.specBulletsInput}
+                onChange={e => setForm({ ...form, specBulletsInput: e.target.value })}
+                rows={4}
+                placeholder="Resolution: 2160x2160 per eye&#10;Refresh rate: 120Hz&#10;Field of View: 110° FOV&#10;Battery: 2.5 hours"
+                className="w-full px-3 py-2 border border-[#cbd5e1] bg-white rounded text-xs focus:outline-none focus:border-[#164475]"
+              />
+            </div>
+
+            {/* Custom Detail Feature Sections */}
+            <div className="bg-white p-5 rounded-lg border border-[#ebebeb] shadow-sm space-y-4">
+              <h3 className="text-sm font-bold text-[#1a1a1a]">Product Detail Feature Sections (Below Main View)</h3>
+              <div className="space-y-3 p-3 bg-[#fafafa] rounded border border-[#ebebeb]">
+                <h4 className="text-xs font-bold text-[#164475]">Feature Section 1</h4>
+                <input type="text" placeholder="Title (e.g. Ergonomic and Professional Design)" value={form.feature1Title} onChange={e => setForm({...form, feature1Title: e.target.value})} className="w-full px-3 py-1.5 border border-[#cbd5e1] rounded text-xs bg-white" />
+                <textarea rows={2} placeholder="Description text..." value={form.feature1Desc} onChange={e => setForm({...form, feature1Desc: e.target.value})} className="w-full px-3 py-1.5 border border-[#cbd5e1] rounded text-xs bg-white resize-none" />
+                <div className="flex gap-2 items-center">
+                  <input type="text" placeholder="Image URL (optional)" value={form.feature1Img} onChange={e => setForm({...form, feature1Img: e.target.value})} className="flex-1 px-3 py-1.5 border border-[#cbd5e1] rounded text-xs bg-white" />
+                  <label className="px-3 py-1.5 bg-[#164475] text-white text-xs font-bold rounded cursor-pointer">
+                    Upload
+                    <input type="file" accept="image/*" className="hidden" onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        const img = await compressImageFile(file);
+                        setForm(f => ({ ...f, feature1Img: img }));
+                      }
+                    }} />
+                  </label>
+                </div>
+              </div>
+
+              <div className="space-y-3 p-3 bg-[#fafafa] rounded border border-[#ebebeb]">
+                <h4 className="text-xs font-bold text-[#164475]">Feature Section 2</h4>
+                <input type="text" placeholder="Title (e.g. IPS Technology for Accurate Colors)" value={form.feature2Title} onChange={e => setForm({...form, feature2Title: e.target.value})} className="w-full px-3 py-1.5 border border-[#cbd5e1] rounded text-xs bg-white" />
+                <textarea rows={2} placeholder="Description text..." value={form.feature2Desc} onChange={e => setForm({...form, feature2Desc: e.target.value})} className="w-full px-3 py-1.5 border border-[#cbd5e1] rounded text-xs bg-white resize-none" />
+                <div className="flex gap-2 items-center">
+                  <input type="text" placeholder="Image URL (optional)" value={form.feature2Img} onChange={e => setForm({...form, feature2Img: e.target.value})} className="flex-1 px-3 py-1.5 border border-[#cbd5e1] rounded text-xs bg-white" />
+                  <label className="px-3 py-1.5 bg-[#164475] text-white text-xs font-bold rounded cursor-pointer">
+                    Upload
+                    <input type="file" accept="image/*" className="hidden" onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        const img = await compressImageFile(file);
+                        setForm(f => ({ ...f, feature2Img: img }));
+                      }
+                    }} />
+                  </label>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
         <div className="flex gap-3 p-6 border-t border-[#ebebeb] bg-white sticky bottom-0 z-10 justify-end">
           <button onClick={onClose} className="px-4 py-2 border border-[#cbd5e1] rounded text-sm font-bold text-[#5c5c5c] hover:bg-[#f6f6f7] transition-colors">Cancel</button>
-          <button onClick={() => { onSave(form); onClose(); }}
+          <button onClick={() => {
+            const specBullets = form.specBulletsInput.split('\n').map((s: string) => s.trim()).filter(Boolean);
+            const { specBulletsInput, ...savePayload } = form;
+            onSave({ ...savePayload, specBullets, images: [form.image, ...(form.additionalImages || [])] });
+            onClose();
+          }}
             className="px-5 py-2 bg-[#164475] hover:bg-[#10355c] text-white rounded text-sm font-bold transition-colors">
             Save
           </button>
@@ -787,6 +853,11 @@ export default function AdminPage() {
   const [chatSessions, setChatSessions] = useState<any[]>([]);
   const [selectedChatSession, setSelectedChatSession] = useState<any>(null);
 
+  // Collection management
+  const [customCollections, setCustomCollections] = useState<string[]>([]);
+  const [showCreateCollectionModal, setShowCreateCollectionModal] = useState(false);
+  const [newCollectionName, setNewCollectionName] = useState('');
+
   // Invoice generator state
   const [invoiceCustomerName, setInvoiceCustomerName] = useState('');
   const [invoiceCustomerEmail, setInvoiceCustomerEmail] = useState('');
@@ -885,7 +956,7 @@ export default function AdminPage() {
     return ltv;
   }, [orders]);
 
-  const productCategories = useMemo(() => ['All', ...Array.from(new Set(products.map(p => p.category).filter(Boolean)))], [products]);
+  const productCategories = useMemo(() => ['All', ...Array.from(new Set([...products.map(p => p.category).filter(Boolean), ...customCollections]))], [products, customCollections]);
 
   // Pagination setups
   const { paged: pagedProducts, page: prodPage, setPage: setProdPage, totalPages: prodTotalPages } = usePagination(filteredProducts, 10);
@@ -922,6 +993,10 @@ export default function AdminPage() {
       const log = JSON.parse(localStorage.getItem('inv_log') || '[]');
       setInventoryLog(log);
     } catch { setInventoryLog([]); }
+    try {
+      const savedCollections = JSON.parse(localStorage.getItem('adamjee_collections') || '[]');
+      if (Array.isArray(savedCollections)) setCustomCollections(savedCollections);
+    } catch {}
     try {
       const savedSettings = JSON.parse(localStorage.getItem('store_settings') || 'null');
       if (savedSettings) {
@@ -1176,38 +1251,51 @@ export default function AdminPage() {
 
   const handleSaveProduct = async (form: any) => {
     const token = localStorage.getItem('token');
-    let res;
+    let savedProd = { ...form };
     const targetId = editingProduct?._id || editingProduct?.id;
-    if (targetId) {
-      res = await fetch(`/api/products/${targetId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify(form)
-      });
-    } else {
-      res = await fetch('/api/products', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify(form)
-      });
+    try {
+      let res;
+      if (targetId) {
+        res = await fetch(`/api/products/${targetId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify(form)
+        });
+      } else {
+        res = await fetch('/api/products', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify(form)
+        });
+      }
+      if (res && res.ok) {
+        const data = await res.json().catch(() => ({}));
+        if (data.product) savedProd = data.product;
+      }
+    } catch (err) {
+      console.error('API save product error, preserving local copy:', err);
     }
 
-    const data = await res.json();
-    if (data.success && data.product) {
-      saveProduct(data.product);
-      if (typeof window !== 'undefined') {
-        window.dispatchEvent(new Event('adamjee_new_product'));
-        try {
-          const bc = new BroadcastChannel('adamjee_products_channel');
-          bc.postMessage('new_product');
-          bc.close();
-        } catch (e) {}
-      }
+    if (!savedProd._id && !savedProd.id) {
+      savedProd.id = targetId || `prod-${Date.now()}`;
+      savedProd._id = savedProd.id;
+    }
+
+    saveProduct(savedProd);
+    showToast(`Product "${savedProd.name}" saved successfully!`);
+
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new Event('adamjee_new_product'));
+      try {
+        const bc = new BroadcastChannel('adamjee_products_channel');
+        bc.postMessage('new_product');
+        bc.close();
+      } catch (e) {}
     }
 
     setEditingProduct(null);
     setShowProductForm(false);
-    loadData(token!);
+    loadData(token || '');
   };
 
   const handleStockAdjust = async (productId: string, newStock: number, logEntry: any) => {
@@ -1278,39 +1366,52 @@ export default function AdminPage() {
     e.preventDefault();
     if (!blogTitle.trim()) return;
     const token = localStorage.getItem('token');
-    const blogData = { title: blogTitle, content: blogContent, category: blogCategory, image: blogImage, excerpt: blogExcerpt, isPublished: blogIsPublished };
+    const targetId = editingBlog?._id || editingBlog?.id;
+    let savedItem: any = {
+      _id: targetId || `blog-${Date.now()}`,
+      id: targetId || `blog-${Date.now()}`,
+      title: blogTitle,
+      content: blogContent,
+      category: blogCategory,
+      image: blogImage,
+      excerpt: blogExcerpt,
+      isPublished: blogIsPublished,
+      publishedAt: editingBlog?.publishedAt || new Date().toISOString()
+    };
     
     try {
       let res;
-      if (editingBlog?._id || editingBlog?.id) {
-        const bId = editingBlog._id || editingBlog.id;
-        res = await fetch(`/api/blogs/${bId}`, {
+      if (targetId) {
+        res = await fetch(`/api/blogs/${targetId}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-          body: JSON.stringify(blogData)
+          body: JSON.stringify(savedItem)
         });
       } else {
         res = await fetch('/api/blogs', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-          body: JSON.stringify(blogData)
+          body: JSON.stringify(savedItem)
         });
       }
-      if (res.ok) {
+      if (res && res.ok) {
         const data = await res.json().catch(() => ({}));
-        const savedItem = data.blog || blogData;
-        saveBlog(savedItem);
-        if (typeof window !== 'undefined') {
-          window.dispatchEvent(new Event('adamjee_new_blog'));
-        }
-        setShowBlogForm(false);
-        setEditingBlog(null);
-        setBlogTitle(''); setBlogContent(''); setBlogImage(''); setBlogExcerpt('');
-        loadData(token!);
+        if (data.blog) savedItem = data.blog;
       }
     } catch (err) {
-      console.error('Error saving blog:', err);
+      console.error('Error saving blog to API:', err);
     }
+
+    saveBlog(savedItem);
+    showToast(`Blog post "${savedItem.title}" saved successfully!`);
+
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new Event('adamjee_new_blog'));
+    }
+    setShowBlogForm(false);
+    setEditingBlog(null);
+    setBlogTitle(''); setBlogContent(''); setBlogImage(''); setBlogExcerpt('');
+    loadData(token || '');
   };
 
   const handleDeleteBlog = async (id: string) => {
@@ -2380,17 +2481,39 @@ export default function AdminPage() {
                   )}
 
                   {activeTab === 'collections' && (
-                    <div className="bg-white p-6 rounded-lg border border-[#ebebeb] shadow-sm space-y-4">
-                      <h3 className="text-sm font-bold">Categories / Collections</h3>
+                    <div className="bg-white p-6 rounded-lg border border-[#ebebeb] shadow-sm space-y-6">
+                      <div className="flex justify-between items-center border-b pb-4">
+                        <div>
+                          <h3 className="text-base font-extrabold text-[#1a1a1a]">Categories & Product Collections</h3>
+                          <p className="text-xs text-gray-500">Manage and create custom product categories for your storefront.</p>
+                        </div>
+                        <button
+                          onClick={() => setShowCreateCollectionModal(true)}
+                          className="px-4 py-2 bg-[#164475] text-white rounded text-xs font-bold hover:bg-[#10355c] transition-colors flex items-center gap-1.5 shadow-sm"
+                        >
+                          + Create Collection
+                        </button>
+                      </div>
+
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                        {productCategories.filter(c => c !== 'All').map(c => (
-                          <div key={c} className="p-4 border border-[#cbd5e1] rounded bg-[#f6f6f7] text-center font-bold text-xs shadow-sm hover:border-[#164475] transition-colors">
-                            {c}
-                            <p className="text-[10px] text-[#5c5c5c] font-semibold mt-1">
-                              {products.filter(p => p.category === c).length} products
-                            </p>
-                          </div>
-                        ))}
+                        {productCategories.filter(c => c !== 'All').map(c => {
+                          const count = products.filter(p => p.category === c).length;
+                          return (
+                            <div
+                              key={c}
+                              onClick={() => { setProductCategoryFilter(c); setActiveTab('products'); }}
+                              className="p-5 border border-[#cbd5e1] rounded-xl bg-[#f8fafc] text-center font-bold text-xs shadow-xs hover:border-[#164475] hover:bg-white cursor-pointer transition-all space-y-2 group"
+                            >
+                              <div className="w-10 h-10 rounded-full bg-[#164475]/10 text-[#164475] flex items-center justify-center mx-auto group-hover:bg-[#164475] group-hover:text-white transition-colors">
+                                <Tag className="w-4 h-4" />
+                              </div>
+                              <h4 className="text-sm font-extrabold text-[#1a1a1a]">{c}</h4>
+                              <p className="text-[11px] text-[#164475] font-extrabold">
+                                {count} {count === 1 ? 'product' : 'products'}
+                              </p>
+                            </div>
+                          );
+                        })}
                       </div>
                     </div>
                   )}
@@ -3528,7 +3651,7 @@ export default function AdminPage() {
 
       {/* Product Form modal */}
       {showProductForm && (
-        <ProductFormModal product={editingProduct} onClose={() => { setShowProductForm(false); setEditingProduct(null); }} onSave={handleSaveProduct} />
+        <ProductFormModal product={editingProduct} onClose={() => { setShowProductForm(false); setEditingProduct(null); }} onSave={handleSaveProduct} customCollections={customCollections} />
       )}
 
       {/* Stock Adjust modal */}
@@ -3874,6 +3997,48 @@ export default function AdminPage() {
         <div className="fixed top-5 right-5 z-[99999] bg-[#164475] text-white text-xs font-bold px-4 py-3 rounded-lg shadow-2xl flex items-center gap-2 border border-[#3b72aa]">
           <CheckCircle className="w-4 h-4 text-green-400 flex-shrink-0" />
           <span>{toastMsg}</span>
+        </div>
+      )}
+
+      {/* Create Collection Modal */}
+      {showCreateCollectionModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[99999] flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl max-w-md w-full p-6 shadow-2xl space-y-4 border border-gray-100">
+            <div className="flex justify-between items-center border-b pb-3">
+              <h3 className="font-bold text-base text-[#1a1a1a]">Create New Collection</h3>
+              <button onClick={() => setShowCreateCollectionModal(false)} className="text-gray-400 hover:text-gray-600"><X className="w-4 h-4" /></button>
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-[#1a1a1a] mb-1.5">Collection / Category Name</label>
+              <input
+                type="text"
+                value={newCollectionName}
+                onChange={e => setNewCollectionName(e.target.value)}
+                placeholder="e.g. Gaming Rigs, Smart Watches, Accessories..."
+                className="w-full px-3 py-2 border rounded text-xs focus:outline-none focus:border-[#164475]"
+              />
+            </div>
+            <div className="flex justify-end gap-2 pt-2">
+              <button onClick={() => setShowCreateCollectionModal(false)} className="px-4 py-2 border rounded text-xs font-bold hover:bg-gray-50">Cancel</button>
+              <button
+                onClick={() => {
+                  if (!newCollectionName.trim()) return;
+                  const name = newCollectionName.trim();
+                  if (!customCollections.includes(name)) {
+                    const updated = [...customCollections, name];
+                    setCustomCollections(updated);
+                    try { localStorage.setItem('adamjee_collections', JSON.stringify(updated)); } catch {}
+                    showToast(`Collection "${name}" created successfully!`);
+                  }
+                  setNewCollectionName('');
+                  setShowCreateCollectionModal(false);
+                }}
+                className="px-4 py-2 bg-[#164475] text-white rounded text-xs font-bold hover:bg-[#10355c]"
+              >
+                Create Collection
+              </button>
+            </div>
+          </div>
         </div>
       )}
 

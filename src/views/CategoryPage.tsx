@@ -37,10 +37,9 @@ export default function CategoryPage({ handleAddToCart, formatPrice }: CategoryP
   // Products data filtered and sorted dynamically
   const soldOutIds = ["hp3", "ac6"];
 
-  // Pre-seed from localStorage cache so the grid renders instantly
-  const cachedProducts = typeof window !== 'undefined' ? getProducts() : [];
-  const [productsList, setProductsList] = useState<Product[]>(cachedProducts);
-  const [loading, setLoading] = useState(cachedProducts.length === 0);
+  // Pre-seed from localStorage/INITIAL_PRODUCTS cache so the grid renders instantly
+  const [productsList, setProductsList] = useState<Product[]>(() => getProducts());
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     const fetchProds = () => {
