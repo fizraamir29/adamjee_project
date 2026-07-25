@@ -42,6 +42,41 @@ const StatusBadge = ({ s }: { s: string }) => (
   </span>
 );
 
+const compressImageFile = (file: File, maxDim = 800, quality = 0.85): Promise<string> => {
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        let width = img.width;
+        let height = img.height;
+        if (width > maxDim || height > maxDim) {
+          if (width > height) {
+            height = Math.round((height * maxDim) / width);
+            width = maxDim;
+          } else {
+            width = Math.round((width * maxDim) / height);
+            height = maxDim;
+          }
+        }
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.drawImage(img, 0, 0, width, height);
+          resolve(canvas.toDataURL('image/jpeg', quality));
+        } else {
+          resolve(e.target?.result as string);
+        }
+      };
+      img.onerror = () => resolve(e.target?.result as string);
+      img.src = e.target?.result as string;
+    };
+    reader.readAsDataURL(file);
+  });
+};
+
 const getInventoryStatus = (stock: number, threshold: number = 5): string => {
   if (stock <= 0) return 'out of stock';
   if (stock <= threshold) return 'low stock';
@@ -201,36 +236,14 @@ function ProductFormModal({ product, onClose, onSave }: ProductFormProps) {
                     onChange={(e) => {
                       const files = Array.from(e.target.files || []);
                       files.forEach(async (file) => {
-                        // Base64 instant local preview
-                        const reader = new FileReader();
-                        reader.onloadend = () => {
-                          const base64 = reader.result as string;
-                          setForm(prev => {
-                            if (!prev.image) return { ...prev, image: base64 };
-                            return { ...prev, additionalImages: [...prev.additionalImages, base64] };
-                          });
-                        };
-                        reader.readAsDataURL(file);
-
-                        // Upload to server endpoint to get permanent server URL
                         try {
-                          const formData = new FormData();
-                          formData.append('image', file);
-                          const res = await fetch('/api/upload', {
-                            method: 'POST',
-                            body: formData,
+                          const compressed = await compressImageFile(file);
+                          setForm(prev => {
+                            if (!prev.image || prev.image.length === 0) {
+                              return { ...prev, image: compressed };
+                            }
+                            return { ...prev, additionalImages: [...(prev.additionalImages || []), compressed] };
                           });
-                          const data = await res.json();
-                          if (data.success && data.image) {
-                            setForm(prev => {
-                              // replace preview with uploaded server url
-                              if (prev.image && prev.image.startsWith('data:')) {
-                                return { ...prev, image: data.image };
-                              }
-                              const updatedAdd = prev.additionalImages.map((img: string) => img.startsWith('data:') ? data.image : img);
-                              return { ...prev, additionalImages: updatedAdd };
-                            });
-                          }
                         } catch (err) {
                           console.error('File upload failed:', err);
                         }
@@ -2044,7 +2057,7 @@ export default function AdminPage() {
                       <div className="space-y-3">
                         {products.filter(p => getInventoryStatus(p.stock || 0, p.lowStockThreshold || 5) !== 'in stock').slice(0, 4).map(p => (
                           <div key={p._id} className="flex items-center gap-3 bg-[#f6f6f7] p-2 rounded border border-[#ebebeb] text-xs">
-                            <img src={p.image} alt={p.name} className="w-8 h-8 object-contain bg-white rounded border border-[#cbd5e1] p-0.5" />
+                            <img src={getProductImage(p)} alt={p.name} onError={(e) => { (e.target as HTMLImageElement).src = getCategoryFallbackImage(p.category, p.name); }} className="w-8 h-8 object-contain bg-white rounded border border-[#cbd5e1] p-0.5" />
                             <div className="flex-1 min-w-0">
                               <p className="font-bold truncate text-[#1a1a1a]">{p.name}</p>
                               <p className="text-[10px] text-[#5c5c5c]">{p.stock} units left</p>
@@ -2415,28 +2428,11 @@ export default function AdminPage() {
                               onChange={async (e) => {
                                 const file = e.target.files?.[0];
                                 if (!file) return;
-                                
-                                // Show immediate local base64 preview while uploading (or as fallback)
-                                const reader = new FileReader();
-                                reader.onloadend = () => {
-                                  setBlogImage(reader.result as string);
-                                };
-                                reader.readAsDataURL(file);
-
-                                // Upload to server upload endpoint
-                                const formData = new FormData();
-                                formData.append('image', file);
                                 try {
-                                  const res = await fetch('/api/upload', {
-                                    method: 'POST',
-                                    body: formData,
-                                  });
-                                  const data = await res.json();
-                                  if (data.success && data.image) {
-                                    setBlogImage(data.image); // Set to server url
-                                  }
+                                  const compressed = await compressImageFile(file);
+                                  setBlogImage(compressed);
                                 } catch (err) {
-                                  console.error('Server upload failed, using base64 fallback:', err);
+                                  console.error('Blog image upload failed:', err);
                                 }
                               }}
                             />
@@ -3488,7 +3484,7 @@ export default function AdminPage() {
             </div>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <img src={selectedProductDetail.image} alt={selectedProductDetail.name} className="w-full h-64 object-contain bg-[#f6f6f7] rounded border p-2 border-[#cbd5e1]" />
+              <img src={getProductImage(selectedProductDetail)} alt={selectedProductDetail.name} onError={(e) => { (e.target as HTMLImageElement).src = getCategoryFallbackImage(selectedProductDetail.category, selectedProductDetail.name); }} className="w-full h-64 object-contain bg-[#f6f6f7] rounded border p-2 border-[#cbd5e1]" />
               <div className="space-y-4 text-xs font-semibold text-[#5c5c5c]">
                 <div>
                   <h3 className="text-sm font-bold text-[#1a1a1a]">{selectedProductDetail.name}</h3>
@@ -3769,7 +3765,7 @@ export default function AdminPage() {
             </div>
             
             <div className="bg-[#f6f6f7] p-3 rounded border border-[#cbd5e1] flex items-center gap-3 text-xs">
-              <img src={inventoryDetailProduct.image} alt={inventoryDetailProduct.name} className="w-12 h-12 object-contain bg-white rounded border border-[#cbd5e1] p-1 flex-shrink-0" />
+              <img src={getProductImage(inventoryDetailProduct)} alt={inventoryDetailProduct.name} onError={(e) => { (e.target as HTMLImageElement).src = getCategoryFallbackImage(inventoryDetailProduct.category, inventoryDetailProduct.name); }} className="w-12 h-12 object-contain bg-white rounded border border-[#cbd5e1] p-1 flex-shrink-0" />
               <div>
                 <p className="font-bold text-[#1a1a1a]">{inventoryDetailProduct.name}</p>
                 <p className="text-[10px] text-[#5c5c5c] font-mono">SKU: {inventoryDetailProduct.code}</p>
