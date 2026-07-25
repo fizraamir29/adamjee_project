@@ -30,11 +30,17 @@ export const getCategoryFallbackImage = (category?: string, name?: string): stri
 
 export const getProductImage = (product: any): string => {
   if (!product) return getCategoryFallbackImage();
-  const img = product.image || (Array.isArray(product.images) && product.images[0]) || (Array.isArray(product.additionalImages) && product.additionalImages[0]);
-  if (img && typeof img === 'string' && img.trim().length > 0) {
+  let img = product.image;
+  if (!img || typeof img !== 'string' || img.trim().length === 0 || img.startsWith('/uploads/')) {
+    img = Array.isArray(product.images) && product.images.find((i: any) => typeof i === 'string' && i.trim().length > 0 && !i.startsWith('/uploads/'));
+  }
+  if (!img || typeof img !== 'string' || img.trim().length === 0 || img.startsWith('/uploads/')) {
+    img = Array.isArray(product.additionalImages) && product.additionalImages.find((i: any) => typeof i === 'string' && i.trim().length > 0 && !i.startsWith('/uploads/'));
+  }
+  if (img && typeof img === 'string' && img.trim().length > 0 && !img.startsWith('/uploads/')) {
     return img;
   }
-  return getCategoryFallbackImage(product.category, product.name);
+  return getCategoryFallbackImage(product?.category, product?.name);
 };
 
 // NEW_ARRIVALS come first so they appear in the New Arrivals section (they have 'New'/'Hot' tags)
